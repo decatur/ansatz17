@@ -1,5 +1,5 @@
-% COPYRIGHT Wolfgang Kühn 2015. You may do anything you like with 
-% this file except remove or modify this copyright.
+% COPYRIGHT Wolfgang Kühn 2015 under the MIT License (MIT).
+% Origin is https://github.com/decatur/ansatz17.
 
 function [stack, parseError] = parseLR(sentence, grammar)
 % Simple Non-recursive, Shift-Reduce, Bottom-Up parser generator with one look ahead LR(1).
