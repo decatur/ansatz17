@@ -4,8 +4,8 @@
 function [stack, parseError] = parseLR(sentence, grammar)
 % Simple Non-recursive, Shift-Reduce, Bottom-Up parser generator with one look ahead LR(1).
 %
-% Usage:
-%   parseLR('1+2-3', {'plus->a+b', 'minus->a-b'})
+% Example:
+%   stack = parseLR('1+2-3', {'plus->a+b', 'minus->a-b'})
 %
 % Parameters:
 %   sentence    The sentence to parse
@@ -17,9 +17,21 @@ function [stack, parseError] = parseLR(sentence, grammar)
 %
 % Tests are in test()
 
+function ref = createRef(index)
+    ref = sprintf('_%d', index);
+endfunction
+
+function value = unref(ref)
+    if ischar(ref) && ref(1) == '_'
+        value = { str2num(ref(2:end)) };
+    else
+        value = ref;
+    end
+endfunction
+
 function ref = pushStack(operation)
     stack{end+1} = operation;
-    ref = ['_' num2str(length(stack))];
+    ref = createRef(length(stack));
 endfunction
 
 function y = str4num(x)
@@ -52,6 +64,7 @@ for k=1:length(grammar)
 end
 
 stack = {};
+variables = struct;
 j = 1;
 
 [S, E, TE, M, tokens, NM, SP] = regexp(s, '(\w+)|([\+\-\*/\(\),])|("[^"]*")');
@@ -105,10 +118,20 @@ while true
             token = tokens{j}{1};
 
             if token(1) == '"'
-                operation = struct;
-                operation.op = 'quote';
-                operation.right = token(2:end-1);
-                token = pushStack(operation);
+                token = pushStack(token(2:end-1));
+            elseif isempty(str2num(token)) && ~isempty(regexp(token, '\w+'))
+                % Note: i, NaN, InF, etc. are all numbers, not a token
+                
+                if ~isfield(variables, token)
+                    operation = struct;
+                    operation.op = 'id';
+                    operation.name = token;
+                    variables.(token) = 1+length(stack);
+                    token = pushStack(operation);
+                else
+                    token = createRef(variables.(token));
+                end
+                
             end
 
             s = cstrcat(s, token);
@@ -159,10 +182,11 @@ if isempty(regexp(s, '^_\d+$'))
     return;
 end
 
-%stack
 
+% Replace all string references by cell references, i.e. _123 by { 123 }.
 for j=1:length(stack)
     op = stack{j};
+    if ~isstruct(op) continue; end;
 
     fields = fieldnames(op);
     for k=1:length(fields)
@@ -172,14 +196,11 @@ for j=1:length(stack)
         elseif strcmp(name, 'list')
             list = op.list;
             for l=1:length(list)
-                item = list{l};
-                if item(1) == '_'
-                    list{l} = {str2num(item(2:end))};
-                end
+                list{l} = unref(list{l});
             end
             op.list = list;
-        elseif op.(name)(1) == '_'
-            op.(name) = {str2num(op.(name)(2:end))};
+        else
+            op.(name) = unref(op.(name));
         end
     end
 

@@ -46,7 +46,7 @@ for i=1:length(stack)
         for k=1:length(args)
             args{k} = unref(args{k});
         end
-        stack{i} = feval(operation.func, args{:});
+        stack{i} = feval(unref(operation.name).name, args{:});
     end
 end
 
