@@ -3,7 +3,10 @@ This is a single file solution with 200 lines of code and no dependencies.
 
 If `ansatz17` does not suit you, you'll find much more potent parser [elsewhere](http://www.cs.dartmouth.edu/~mckeeman/cs48/lectures/01_lecture.html).
 
-# Usage:
+# Restrictions
+Currently MATLAB is not supported.
+
+# Usage
 ```
 [ast, parseError] = parseLR(sentence, grammar)
 ```
