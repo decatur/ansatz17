@@ -41,8 +41,8 @@ prettyPrintAST(ast)
       }
       b =  3
 ```
-
-
+| a | b | c | d |
+|--|--|--|--|
 | 1 | plus | a: 1 | b: 2 |
 | 2 | minus | a: ->1 | b: 3 |
 
