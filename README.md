@@ -17,9 +17,16 @@ parseError  An error string if a parse error has occured
 ```
 # Examples
 ```
-stack = parseLR('1+2-3', {'plus->a+b', 'minus->a-b'})
+ast = parseLR('1+2-3', {'plus->a+b', 'minus->a-b'})
 ```
 returns a cell array with two reductions. A reference is expressed as a singlular cell pointing to the referenced index. In our case `stack{2}.a{1}` points at reduction `1`.
+```
+disp(ast)
+addpath('test')
+prettyPrintAST(ast)
+```
+
+
 ```
   [1,1] =
       op = plus
@@ -34,5 +41,10 @@ returns a cell array with two reductions. A reference is expressed as a singlula
       }
       b =  3
 ```
+
+
+| 1 | plus | a: 1 | b: 2 |
+| 2 | minus | a: ->1 | b: 3 |
+
 
 For a simple arithmetical expression parser see test.m
