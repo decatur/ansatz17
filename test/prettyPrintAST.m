@@ -1,9 +1,17 @@
 function buffer = prettyPrintAST(ast)
+%prettyPrintAST
+%
+% Usage:
+%   buffer = prettyPrintAST(ast)
+%
+% COPYRIGHT Wolfgang Kuehn 2015 under the MIT License (MIT).
+% Origin is https://github.com/decatur/ansatz17.
+
     buffer = '';
 
     function append(chunk)
         buffer = sprintf('%s%s', buffer, num2str(chunk));
-    endfunction
+    end
 
     function s = unref(ref)
         if iscell(ref)
@@ -11,7 +19,7 @@ function buffer = prettyPrintAST(ast)
         else
             s = num2str(ref);
         end
-    endfunction
+    end
     
     for j=1:length(ast)
         append(sprintf('[ '));
@@ -43,4 +51,4 @@ function buffer = prettyPrintAST(ast)
         end
         append(sprintf(' ]\n'));
     end
-endfunction
+end
