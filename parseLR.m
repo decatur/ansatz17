@@ -1,4 +1,4 @@
-function [stack, parseError] = parseLR(sentence, grammar)
+function [ast, parseError] = parseLR(sentence, grammar)
 %parseLR Simple Non-recursive, Shift-Reduce, Bottom-Up parser generator with one look ahead LR(1).
 %
 % Example:
@@ -30,8 +30,8 @@ function [stack, parseError] = parseLR(sentence, grammar)
     end
 
     function ref = pushStack(operation)
-        stack{end+1} = operation;
-        ref = createRef(length(stack));
+        ast{end+1} = operation;
+        ref = createRef(length(ast));
     end
 
     function y = str4num(x)
@@ -48,7 +48,7 @@ s = sentence;
 patterns = cell(1, length(grammar));
 
 for k=1:length(grammar)
-    parts = strsplit(grammar{k}, '\->', 'delimitertype', 'regularexpression'); % Octave \-> must be ->
+    parts = strsplit(grammar{k}, '\->', 'delimitertype', 'regularexpression');
     pattern = regexprep(parts{2}, '\s+', '');
     
     pattern = regexprep(pattern, '\+', '\\+');
@@ -58,12 +58,12 @@ for k=1:length(grammar)
     pattern = regexprep(pattern, '\)', '\\)');
     
     pattern = regexprep(pattern, 'list', '####');
-    pattern = regexprep(pattern, '(\w+)', '(?<$1>\\w+)'); % Octave \w -> w
+    pattern = regexprep(pattern, '(\w+)', '(?<$1>\\w+)');
     pattern = regexprep(pattern, '####', '(?<list>(\\w+,)*(\\w+)?)');
     patterns{k} = struct('op', strtrim(parts{1}), 'pattern', pattern);
 end
 
-stack = {};
+ast = {};
 variables = struct;
 j = 1;
 
@@ -116,7 +116,7 @@ while true
                     operation = struct;
                     operation.op = 'id';
                     operation.name = token;
-                    variables.(token) = 1+length(stack);
+                    variables.(token) = 1+length(ast);
                     token = pushStack(operation);
                 else
                     token = createRef(variables.(token));
@@ -164,8 +164,8 @@ while true
 end
 
 %s
-%stack
-if length(tokens) == 1 && isempty(stack)
+%ast
+if length(tokens) == 1 && isempty(ast)
     % Input was a single numeric token, for exampel 13, or an operator.
     token = tokens{1}{1};
     num = str2num(token);
@@ -174,17 +174,17 @@ if length(tokens) == 1 && isempty(stack)
         parseError = sprintf('Syntax error at ...%s', s);
         return
     end
-    stack{1} = num;
+    ast{1} = num;
 elseif isempty(regexp(s, '^_\d+$', 'once'))
-    stack = [];
+    ast = [];
     parseError = sprintf('Parse error: %s', s);
     return;
 end
 
 
 % Replace all string references by cell references, i.e. _123 by { 123 }.
-for j=1:length(stack)
-    op = stack{j};
+for j=1:length(ast)
+    op = ast{j};
     if ~isstruct(op); continue; end;
     
     fields = fieldnames(op);
@@ -204,7 +204,7 @@ for j=1:length(stack)
     end
     
     
-    stack{j} = op;
+    ast{j} = op;
 end
 
 end
