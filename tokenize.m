@@ -3,31 +3,40 @@ function [out, symbols, parseError] = tokenize(in)
 %
 % Example: 
 %   [out, symbols, parseError] = tokenize('foo 33 +bar"123m23" 1.34')
+%   [out, symbols, parseError] = tokenize('1+2*3')
 
-[S, E, ~, ~, tokens, NM, SP] = regexp(in, '[a-z_][a-z0-9_]*|[\+\-\*/\(\),]|"[^"]*"|\d+(\.\d*)?(e\d+)?', 'ignorecase');
 
 out = '';
 symbols = struct;
+parseError = [];
+s = in;
+count = 1;
 
-% Check for lexical errors
-for k=1:length(SP)
-    if ~isempty(strtrim(SP{k}))
-        if k==1
-            start = 1;
-        else
-            start = E(k-1)+1;
-        end
-        parseError = sprintf('Syntax error at ...%s', in(start:end));
-        return
+do
+    [S, E, TE, M, T, NM, SP] = regexp(s, '(?<id>[a-z_][a-z0-9_]*)|(?<op>[\+\-\*/\(\),])|"(?<string>[^"]*)"|(?<number>\d+(\.\d*)?(e\d+)?)', 'ignorecase', 'once');
+    
+    
+    if isempty(S) || S ~= 1
+        parseError = sprintf('Syntax error at ...%s', s);
+        break;
     end
-end
 
-for k=1:length(S)
-    name = num2str(k);
-    symbols.(name) = in(S(k):E(k));
-    out = [out ' ' name];
-end
+    key = ['s' num2str(count)];
+    token = T{1};
 
-out = strtrim(out);
+    if ~isempty(NM.id)
+        symbols.(key) = { NM.id };
+        token = key;
+    elseif ~isempty(NM.string)
+        symbols.(key) = NM.string;
+        token = key;
+    elseif ~isempty(NM.number)
+        symbols.(key) = str2num(NM.number);
+        token = key;
+    end
 
-end
+    s = SP{2};
+    count = count + 1;
+    out = [out ' ' token];
+until isempty(s)
+

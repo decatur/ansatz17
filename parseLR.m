@@ -22,7 +22,14 @@ function [ast, parseError] = parseLR(sentence, grammar)
     end
 
     function value = unref(ref)
-        if ischar(ref) && ref(1) == '_'
+        if ischar(ref) && ref(1) == 's'
+            v = symbols.(ref);
+            if isnumeric(v) || ischar(v)
+                value = v;
+            else
+                value = ref;
+            end
+        elseif ischar(ref) && ref(1) == '_'
             value = { str2double(ref(2:end)) };
         else
             value = ref;
@@ -41,9 +48,11 @@ function [ast, parseError] = parseLR(sentence, grammar)
         end
     end
 
-parseError = [];
-% TODO: rename s
-s = sentence;
+[s, symbols, parseError] = tokenize(sentence);
+
+if ~isempty(parseError)
+    return
+end
 
 patterns = cell(1, length(grammar));
 
@@ -58,93 +67,61 @@ for k=1:length(grammar)
     pattern = regexprep(pattern, '\)', '\\)');
     
     pattern = regexprep(pattern, 'list', '####');
-    pattern = regexprep(pattern, '(\w+)', '(?<$1>\\w+)');
-    pattern = regexprep(pattern, '####', '(?<list>(\\w+,)*(\\w+)?)');
+    pattern = regexprep(pattern, '(\w+)', '\\s*(?<$1>\\w+)\\s*');
+    %pattern = regexprep(pattern, '####', '(?<list>(\\w+,)*(\\w+)?)');
     patterns{k} = struct('op', strtrim(parts{1}), 'pattern', pattern);
 end
 
 ast = {};
+astIndex = 0;
 variables = struct;
-j = 1;
-
-[S, E, ~, ~, tokens, NM, SP] = regexp(s, '(\w+)|([\+\-\*/\(\),])|("[^"]*")');
-
-if isempty(tokens)
-    % Shortcut empty input sequence.
-    return
-end
-
-% Check for lexical errors
-for k=1:length(SP)
-    if ~isempty(strtrim(SP{k}))
-        if k==1
-            start = 1;
-        else
-            start = E(k-1)+1;
-        end
-        parseError = sprintf('Syntax error at ...%s', s(start:end));
-        return
-    end
-end
-
-s = '';
+ruleIndex = 1;
 
 while true
     
-    %printf('s = %s\n', s);
-    for k = 1:length(patterns)
-        op = patterns{k}.op;
-        % Always match right end.
-        %[patterns{k}.pattern '$']
-        [S, ~, ~, ~, ~, NM, SP] = regexp(s, [patterns{k}.pattern '$'], 'once');
+    ast
+    fprintf(1, 's:%s, ruleIndex:%d\n', s, ruleIndex);
+    while ruleIndex <= length(patterns)
+        rule = patterns{ruleIndex};
+        op = rule.op;
+        rule.pattern
+        [S, ~, ~, ~, ~, NM, SP] = regexp(s, rule.pattern, 'once');
         if ~isempty(S)
             break
         end
+        ruleIndex = ruleIndex + 1;
     end
     
     if isempty(S)
-        if j <= length(tokens)
-            % Shift token
-            token = tokens{j}{1};
-            
-            if token(1) == '"'
-                token = pushStack(token(2:end-1));
-            elseif isempty(str2num(token)) && ~isempty(regexp(token, '\w+', 'once'))
-                % Note: i, NaN, InF, etc. are all numbers, not a token
-                
-                if ~isfield(variables, token)
-                    operation = struct;
-                    operation.op = 'id';
-                    operation.name = token;
-                    variables.(token) = 1+length(ast);
-                    token = pushStack(operation);
-                else
-                    token = createRef(variables.(token));
-                end
-                
-            end
-            
-            s = [s, token];
-            j = j + 1;
-            continue;
-        else
-            % Accept
+        
+        if astIndex == 0
+            % Fail
+            error('Fail')
             break;
         end
-    end
-    
-    
-    if strcmp(op, 'binaryPlus') || strcmp(op, 'binaryMinus')
-        if j <= length(tokens) && strcmp(tokens{j}{1}, '*')
-            s = [s, tokens{j}{1}];
-            j = j + 1;
-            continue;
-        end
+
+        do
+            operation = ast{astIndex};
+            'Backtracking'
+            operation
+            ast{astIndex} = [];
+            astIndex = astIndex - 1;
+
+            s = operation.s;
+            ruleIndex = 1 + operation.ruleIndex;
+            if ruleIndex <= length(patterns)
+                break;
+            end
+        until astIndex == 0
+        
+        
+        continue;
     end
     
     % Reduce
     operation = struct;
     operation.op = op;
+    operation.s = s;
     
     fields = fieldnames(NM);
     for k=1:length(fields)
@@ -159,34 +136,37 @@ while true
             operation.(name) = str4num(NM.(name));
         end
     end
-    
-    s = [SP{1}, pushStack(operation)];
-end
 
-%s
-%ast
-if length(tokens) == 1 && isempty(ast)
-    % Input was a single numeric token, for exampel 13, or an operator.
-    token = tokens{1}{1};
-    num = str2num(token);
-    % Shortcut single input token.
-    if isempty(num)
-        parseError = sprintf('Syntax error at ...%s', s);
-        return
+    astIndex = 1 + astIndex;
+
+    ref = createRef(astIndex);
+    %dbstop(138);
+    operation.s = s;
+    operation.ruleIndex = ruleIndex;
+    ast{astIndex} = operation;
+
+    if isempty(SP{1}) && isempty(SP{2})
+        % Accept
+        break;
     end
-    ast{1} = num;
-elseif isempty(regexp(s, '^_\d+$', 'once'))
-    ast = [];
-    parseError = sprintf('Parse error: %s', s);
-    return;
+
+    s = [SP{1}, ' ', ref, ' ', SP{2}];
+    ruleIndex = 1;
+        
 end
 
+'Done'
+s
+ast
 
 % Replace all string references by cell references, i.e. _123 by { 123 }.
 for j=1:length(ast)
     op = ast{j};
     if ~isstruct(op); continue; end;
-    
+
+    op = rmfield(op, 's');
+    op = rmfield(op, 'ruleIndex');
+
     fields = fieldnames(op);
     for k=1:length(fields)
         name = fields{k};
