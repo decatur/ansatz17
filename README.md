@@ -1,12 +1,16 @@
-You found a simple, non-recursive, shift-reduce, bottom-up parser generator for GNU Octave or MATLAB®.
-It is a single file solution with 200 lines of code and no dependencies.
+This is a simple and fast parser for GNU Octave or MATLAB®.
+It is a single file solution with about 200 lines of code and no dependencies.
 
-# Restrictions
 The test cases run successfully with GNU Octave 3.8.2 and MATLAB 2013b.
 Older versions may break the code.
 
-As far as I know there is one [much more potent parser in MATLAB](http://www.cs.dartmouth.edu/~mckeeman/cs48/lectures/01_lecture.html), admitting I could not make it work for me.
+The parser emmits an Abstract Syntax Tree (AST). It's not realy a tree, but a Directed Acyclic Graph.
+On this AST you can, for example,
+* evaluate (as an example see test/evalExpr.m)
+* validate
+* compile
 
+As far as I know there is one [much more potent parser in MATLAB](http://www.cs.dartmouth.edu/~mckeeman/cs48/lectures/01_lecture.html), admitting I could not make it work for me.
 
 # Usage
 ```
@@ -19,9 +23,11 @@ sentence    The sentence to parse
 ```
 ## Returns
 ```
-ast         Abstract syntax tree as a linear lists of reductions
+ast         Linked list of nodes representing an Abstract Syntax Tree
+            
 parseError  An error string if a parse error has occured
 ```
+
 # Examples
 ```
 ast = parse('1.2+3.14')
@@ -71,4 +77,4 @@ prettyPrintAST(parse('power(2, 2)'))
 | $4 |   funccall | head: $1 | tail: $2, $3,  |
 
 
-For a simple arithmetical expression parser see test.m
+
