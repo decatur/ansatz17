@@ -2,22 +2,25 @@ function [ast, parseError] = parse(sentence)
 %parse Simple and fast scanner and parser.
 %
 % Example:
-%   ast = parse('1+2*3')
+%   [ast, parseError] = parse('1+2*3')
 %
 % Parameters:
 %   sentence    The sentence to parse
 %
 % Returns:
-%   ast         Lists of reductions
-%   parseError  An error string if a parse error has occured
+%   ast         Linked list of nodes representing an Abstract Syntax Tree (not realy a tree, but a Directed Acyclic Graph)
+%   parseError  An error string if a parse error has occured, otherwise empty
 %
 % Tests are in test()
-% See http://effbot.org/zone/simple-top-down-parsing.htm
 %
 % Implementation Design:
+% The parser is of the top-down variety based on the ideas of ..., see 
+% http://effbot.org/zone/simple-top-down-parsing.htm
+% Advantage, disadvantage...
+%
 % Code must run on both Octave and MATLAB. The former may not support handles to nested functions.
 % As a workaround we use anonymous functions instead.
-% The scanner/tokenizer instanceiates tokens, which in turn implement parser logic.
+% The scanner/tokenizer instantiates tokens, which in turn implement parser logic.
 % This woefull fact prevents us from making the tokenizer a top-level function.
 %
 % COPYRIGHT Wolfgang Kühn 2015 under the MIT License (MIT).
@@ -27,6 +30,7 @@ function [ast, parseError] = parse(sentence)
         t = token;
         token = next();
         left = t.nud();
+        % TODO: Handle "structure has no member lbp"
         while rbp < token.lbp
             t = token;
             token = next();
@@ -34,39 +38,55 @@ function [ast, parseError] = parse(sentence)
         end
     end
 
+    function ref = newHeadTailNode(type, left, bp)
+        s = struct('type', type);
+        s.head = left;
+        s.tail = expression(bp);
+        ast{end+1} = s;
+        ref = length(ast);
+    end
+
+    function ref = newNumericalNode(type, value)
+        s = struct('type', 'numerical');
+        s.value = str2double(value);
+        ast{end+1} = s;
+        ref = length(ast);
+    end
+
+    function ref = newStringNode(type, value)
+        s = struct('type', 'numerical');
+        s.value = value;
+        ast{end+1} = s;
+        ref = length(ast);
+    end
+
+    function ref = newIdentifierNode(type, name)
+        s = struct('type', 'identifier');
+        s.name = name;
+        ast{end+1} = s;
+        ref = length(ast);
+    end
+
     function t = numerical_token(value)
         t = struct('type', 'numerical');
-        t.value = str2double(value);
-        t.nud = @() t.value;
+        t.nud = @() newNumericalNode('numerical', value);
     end
 
     function t = string_token(value)
         t = struct('type', 'string');
-        t.value = value;
-        t.nud = @() t.value;
+        t.nud = @() newStringNode('string', value);
     end
 
-    function t = identifier_token(value)
+    function t = identifier_token(name)
         t = struct('type', 'identifier');
-        t.value = value;
-        ast{end+1} = struct('type', 'identifier', 'name', value);
-        ref = { length(ast) };
-        t.nud = @() ref;
-    end
-
-    function ref = newHeadTailNode(type, left)
-        s = struct('type', type);
-        s.head = left;
-        s.tail = expression(10);
-        ast{end+1} = s;
-        ref = { length(ast) };
+        t.nud = @() newIdentifierNode('identifier', name);
     end
 
     function t = operator_bin_token(op, lbp)
         t = struct('type', op);
         t.lbp = lbp;
-        t.led = @(left) newHeadTailNode(op, left);
-        t.nud = @() error('Parse:syntax', 'Illegal syntax');
+        t.led = @(left) newHeadTailNode(op, left, lbp);
+        t.nud = @() error('Parse:syntax', 'Illegal syntax %s');
     end
 
     function v = expect(type)
@@ -98,7 +118,7 @@ function [ast, parseError] = parse(sentence)
     s = strtrim(in);
 
     while ~isempty(s)
-        [S, E, TE, M, T, NM, SP] = regexp(s, '(?<identifier>[a-z_][a-z0-9_]*)|(?<op>[\+\-\*/\(\),])|"(?<string>[^"]*)"|(?<number>\d+(\.\d*)?(e\d+)?)', 'ignorecase', 'once');
+        [S, E, TE, M, T, NM, SP] = regexp(s, '(?<identifier>[a-z_][a-z0-9_]*)|(?<op>[\+\-\*/\(\),])|\[(?<ref>[^\]]*)\]|"(?<string>[^"]*)"|(?<number>\d+(\.\d*)?(e\d+)?)', 'ignorecase', 'once');
         
         
         if isempty(S) || S ~= 1
@@ -122,8 +142,10 @@ function [ast, parseError] = parse(sentence)
             token = string_token(NM.string);
         elseif ~isempty(NM.identifier)
             token = identifier_token(NM.identifier);
+        elseif ~isempty(NM.ref)
+            token = identifier_token(NM.ref);
         else
-            error('Invalid token: %s', token)
+            parseError = sprintf('Invalid token: %s', token);
         end
 
         s = strtrim(SP{2});
@@ -140,7 +162,7 @@ function [ast, parseError] = parse(sentence)
 
     function t = next()
         if index > length(tokens)
-            error('Parse:terminate', 'Expression terminated');
+            error('Parse:terminate', 'Expression terminated %s', sentence);
         end
         t = tokens{index};
         index = index + 1;
@@ -149,25 +171,24 @@ function [ast, parseError] = parse(sentence)
     ast = {};
 
     [tokens, parseError] = tokenizer(sentence);
-    index = 1;
-    token = next();
 
     if length(tokens) == 1
-        % Empty input
+        % TODO: Why do we need to exit here?
         return;
     end
 
-    if length(tokens) == 2 && ...
-        ( strcmp(token.type, 'numerical') || strcmp(token.type, 'string') )
-        % Single literal input.
-        ast = token.value;
-        return;
-    end
+    index = 1;
+    token = next();
     
     try
         expression(0);
     catch e
-        parseError = e;
+        parseError = e.message;
     end
+
+    if ~isempty(parseError)
+        ast = {};
+    end
+
 end
 
