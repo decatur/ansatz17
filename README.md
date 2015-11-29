@@ -10,13 +10,12 @@ As far as I know there is one [much more potent parser in MATLAB](http://www.cs.
 
 # Usage
 ```
-[ast, parseError] = parseLR(sentence, grammar)
+[ast, parseError] = parse(sentence)
 ```
 
 ## Parameters
 ```
 sentence    The sentence to parse
-grammar     The grammar rules to apply
 ```
 ## Returns
 ```
@@ -25,35 +24,51 @@ parseError  An error string if a parse error has occured
 ```
 # Examples
 ```
-ast = parseLR('1+2-3', {'plus->left+right', 'minus->left-right'})
+ast = parse('1.2+3.14')
   [1,1] =
-      op = plus
-      left =  1
-      right =  2
-
+      type = numerical
+      value =  1.2
   [1,2] =
-      op = minus
-      left = {1}  % Or $1 as a shortcut
-      right =  3
+      type = numerical
+      value =  3.14
+  [1,3] =
+      type = +
+      head =  1
+      tail =  2
+
 ```
-returns a cell array with two reductions. A reference is expressed as a singlular cell pointing to the referenced index. We will say `$1` (as a shortcut for `{1}`) references node `1`.
+returns a cell array with three nodes. A reference is expressed as an integer pointing to the referenced index.
+We will denote the reference to index `I` by `$I`.
 ```
 addpath('test')
-prettyPrintAST(ast)
+prettyPrintAST(parse('1.2+3.14'))
 ```
-| Index | Rule | Property A | Property B |
-|---|---|---|---|
-| 1 | plus | left: 1 | right: 2 |
-| 2 | minus | left: $1 | right: 3 |
+| Index | Rule | Head | Tail |
+|-------|------|------|------|
+| $1 |  numerical | value: 1.2 |
+| $2 |  numerical | value: 3.14 |
+| $3 |          + | head: $1 | tail: $2 |
 
 ```
-prettyPrintAST(parseLR('foo+1+foo', {'plus->left+right', 'minus->left-right'}))
+prettyPrintAST(parse('3.14+foo'))
 ```
-| Index | Rule | Property A | Property B |
-|---|---|---|---|
-| 1 | id | name: foo |
-| 2 | plus | left: $1 | right: 1 |
-| 3 | plus | left: $2 | right: $1 |
+
+| Index | Rule | Head | Tail |
+|-------|------|------|------|
+| $1 |  numerical | value: 3.14 |
+| $2 | identifier | name: foo |
+| $3 |          + | head: $1 | tail: $2 |
+
+```
+prettyPrintAST(parse('power(2, 2)'))
+```
+
+| Index | Rule | Head | Tail |
+|-------|------|------|------|
+| $1 | identifier | name: power |
+| $2 |  numerical | value: 2 |
+| $3 |  numerical | value: 2 |
+| $4 |   funccall | head: $1 | tail: $2, $3,  |
 
 
 For a simple arithmetical expression parser see test.m

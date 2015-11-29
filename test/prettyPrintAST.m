@@ -16,18 +16,23 @@ function buffer = prettyPrintAST(ast)
     
     for j=1:length(ast)
         node = ast{j};
-        append(sprintf('[ %2s | %10s', ['$' num2str(j)], node.type));
+        append(sprintf('| %2s | %10s', ['$' num2str(j)], node.type));
         fields = fieldnames(node);
         for k=1:length(fields)
             key = fields{k};
             if strcmp(key, 'type')
                 % skip
-            elseif strcmp(key, 'head') || strcmp(key, 'tail') 
-                append(sprintf(' | %s: $%d', key, node.(key)));
+            elseif strcmp(key, 'head') || strcmp(key, 'tail')
+                if isnumeric(node.(key))
+                    append(sprintf(' | %s: $%d', key, node.(key)));
+                else
+                    args = strjoin(cellfun(@(el)['$' num2str(el)], node.(key), 'UniformOutput', false), ', ');
+                    append(sprintf(' | %s: %s', key, args));
+                end
             else
                 append(sprintf(' | %s: %s', key, num2str(node.(key))));
             end
         end
-        append(sprintf(' ]\n'));
+        append(sprintf(' |\n'));
     end
 end
