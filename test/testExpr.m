@@ -43,7 +43,7 @@ assertTest('2*(1+3)', 2*(1+3));
 assertTest('abs(1)', 1);
 assertTest('abs(-1)', 1);
 assertTest('sin(1+2)', sin(1+2));
-assertTest('power(-2,2)', 4);
+assertTest('power(2, 2)', 4);
 
 %assertFailure('1+');
 %assertFailure('1+-2');

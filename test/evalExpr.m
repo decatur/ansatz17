@@ -26,8 +26,15 @@ for k=1:length(ast)
         ast{k}.value = ast{node.head}.value - ast{node.tail}.value;
     elseif strcmp(type, 'identifier')
         if ~isfield(node, 'value')
-            error('Eval:undefined', '%s undefined', node.name);
+            % TODO: This may be a function handle, so we cannot check for undefined value.
+            %error('Eval:undefined', '%s undefined', node.name);
         end
+    elseif strcmp(type, 'funccall')
+        args = {};
+        for l=1:length(node.tail)
+            args{end+1} = ast{node.tail{l}}.value;
+        end
+        ast{k}.value = feval(ast{node.head}.name, args{:});
     else
         % A literal node
     end

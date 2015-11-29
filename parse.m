@@ -14,8 +14,9 @@ function [ast, parseError] = parse(sentence)
 % Tests are in test()
 %
 % Implementation Design:
-% The parser is of the top-down variety based on the ideas of ..., see 
+% The parser is of the top-down operator precedence variety based on ideas by Vaughan Pratt, see 
 % http://effbot.org/zone/simple-top-down-parsing.htm
+% http://javascript.crockford.com/tdop/tdop.html
 % Advantage, disadvantage...
 %
 % Code must run on both Octave and MATLAB. The former may not support handles to nested functions.
@@ -89,15 +90,21 @@ function [ast, parseError] = parse(sentence)
         t.nud = @() error('Parse:syntax', 'Illegal syntax %s');
     end
 
-    function v = expect(type)
+    function v = advance1(type)
         v = expression(0);
+        advance(type);
+    end
+
+    function advance(type)
         assert(strcmp(token.type, type));
         token = next();
     end
 
     function t = operator_opengroup_token()
         t = struct('type', '(');
-        t.nud= @() expect(')');
+        t.nud = @() advance1(')');
+        t.led = @(left) foo(left);
+        t.lbp = 150;
     end
 
     function t = operator_closegroup_token()
@@ -105,6 +112,29 @@ function [ast, parseError] = parse(sentence)
         t.lbp = 0;
     end
 
+    function t = operator_comma_token()
+        t = struct('type', ',');
+        t.lbp = 0;
+    end
+
+    function ref = foo(left)
+        s = struct('type', 'funccall');
+        s.head = left;
+        s.tail = {};
+        %dbstop(116);
+        if ~strcmp(token.type, ')')
+            while true
+                s.tail{end+1} = expression(0);
+                if ~strcmp(token.type, ',')
+                    break;
+                end
+                advance(',');
+            end
+        end
+        advance(')');
+        ast{end+1} = s;
+        ref = length(ast);
+    end
 
     function [tokens, parseError] = tokenizer(in)
     %tokenize Splits a string into a sequence of tokens.
@@ -136,6 +166,8 @@ function [ast, parseError] = parse(sentence)
             token = operator_opengroup_token();
         elseif token == ')'
             token = operator_closegroup_token();
+        elseif token == ','
+            token = operator_comma_token();
         elseif ~isempty(NM.number)
             token = numerical_token(NM.number);
         elseif ~isempty(NM.string)
@@ -153,7 +185,7 @@ function [ast, parseError] = parse(sentence)
         tokens{end+1} = token;
     end
 
-    end_token = struct;
+    end_token = struct('type', '(end)');
     end_token.lbp = 0;
 
     tokens{end+1} = end_token;
