@@ -1,4 +1,4 @@
-function [ast, parseError] = parse(sentence)
+function [ast, parseError] = parse(sentence, grammar)
 %parse Simple and fast scanner and parser.
 %
 % Example:
@@ -8,50 +8,45 @@ function [ast, parseError] = parse(sentence)
 %   sentence    The sentence to parse
 %
 % Returns:
-%   ast         Linked list of nodes representing an Abstract Syntax Tree (not realy a tree, but a Directed Acyclic Graph)
+%   ast         Linked list of nodes representing an Abstract Syntax Tree
 %   parseError  An error string if a parse error has occured, otherwise empty
-%
-% Tests are in test()
-%
-% Implementation Design:
-% The parser is of the top-down operator precedence variety based on ideas by Vaughan Pratt, see 
-% http://effbot.org/zone/simple-top-down-parsing.htm
-% http://javascript.crockford.com/tdop/tdop.html
-% Advantage, disadvantage...
-%
-% Code must run on both Octave and MATLAB. The former may not support handles to nested functions.
-% As a workaround we use anonymous functions instead.
-% The scanner/tokenizer instantiates tokens, which in turn implement parser logic.
-% This woefull fact prevents us from making the tokenizer a top-level function.
 %
 % COPYRIGHT Wolfgang Kühn 2015 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
 
+    function ref = addAstNode(node)
+        ast{end+1} = node;
+        ref = length(ast);
+    end
+
     function left = expression(rbp)
         t = token;
         token = next();
-        left = t.nud();
+        left = addAstNode(t.nud());
         % TODO: Handle "structure has no member lbp"
         while rbp < token.lbp
             t = token;
             token = next();
-            left = t.led(left);
+            left = addAstNode(t.led(left));
         end
+
     end
 
-    function ref = newHeadTailNode(type, left, bp)
-        s = struct('type', type);
-        s.head = left;
-        s.tail = expression(bp);
-        ast{end+1} = s;
-        ref = length(ast);
+    symbols = struct;
+
+    function createSymbol(sym)
+        key = sprintf('%d', double(sym.type));
+        symbols.(key) = sym;
     end
 
-    function ref = newNumericalNode(type, value)
-        s = struct('type', 'numerical');
-        s.value = str2double(value);
-        ast{end+1} = s;
-        ref = length(ast);
+    function sym = symbol(s)
+        key = sprintf('%d', double(s));
+        sym = symbols.(key);
+    end
+
+    function node = newNumericalNode(type, value)
+        node = struct('type', 'numerical');
+        node.value = str2double(value);
     end
 
     function ref = newStringNode(type, value)
@@ -81,13 +76,6 @@ function [ast, parseError] = parse(sentence)
     function t = identifier_token(name)
         t = struct('type', 'identifier');
         t.nud = @() newIdentifierNode('identifier', name);
-    end
-
-    function t = operator_bin_token(op, lbp)
-        t = struct('type', op);
-        t.lbp = lbp;
-        t.led = @(left) newHeadTailNode(op, left, lbp);
-        t.nud = @() error('Parse:syntax', 'Illegal syntax %s');
     end
 
     function v = advance1(type)
@@ -121,7 +109,7 @@ function [ast, parseError] = parse(sentence)
         s = struct('type', 'funccall');
         s.head = left;
         s.tail = {};
-        %dbstop(116);
+
         if ~strcmp(token.type, ')')
             while true
                 s.tail{end+1} = expression(0);
@@ -137,59 +125,56 @@ function [ast, parseError] = parse(sentence)
     end
 
     function [tokens, parseError] = tokenizer(in)
-    %tokenize Splits a string into a sequence of tokens.
-    %
-    % Example: 
-    %   [out, symbols, identifiers, parseError] = tokenize('foo 33 +bar"123m23" 1.34')
-    %   [out, symbols, identifiers, parseError] = tokenize('1+2*3')
+        %tokenize Splits a string into a sequence of tokens.
+        %
+        % Example: 
+        %   [out, symbols, identifiers, parseError] = tokenize('foo 33 +bar"123m23" 1.34')
+        %   [out, symbols, identifiers, parseError] = tokenize('1+2*3')
 
-    tokens = {};
-    parseError = [];
-    s = strtrim(in);
+        tokens = {};
+        parseError = [];
+        s = strtrim(in);
 
-    while ~isempty(s)
-        [S, E, TE, M, T, NM, SP] = regexp(s, '(?<identifier>[a-z_][a-z0-9_]*)|(?<op>[\+\-\*/\(\),])|\[(?<ref>[^\]]*)\]|"(?<string>[^"]*)"|(?<number>\d+(\.\d*)?(e\d+)?)', 'ignorecase', 'once');
-        
-        
-        if isempty(S) || S ~= 1
-            parseError = sprintf('Syntax error at ...%s', s);
-            break;
+        while ~isempty(s)
+            [S, E, TE, M, T, NM, SP] = regexp(s, '(?<identifier>[a-z_][a-z0-9_]*)|(?<op>[\+\-\*/\(\),])|\[(?<ref>[^\]]*)\]|"(?<string>[^"]*)"|(?<number>\d+(\.\d*)?(e\d+)?)', 'ignorecase', 'once');
+            
+            
+            if isempty(S) || S ~= 1
+                parseError = sprintf('Syntax error at ...%s', s);
+                break;
+            end
+
+            token = T{1};
+
+            if ~isempty(NM.op)
+                token = symbol(token);
+            elseif token == '('
+                token = operator_opengroup_token();
+            elseif token == ')'
+                token = operator_closegroup_token();
+            elseif token == ','
+                token = operator_comma_token();
+            elseif ~isempty(NM.number)
+                token = numerical_token(NM.number);
+            elseif ~isempty(NM.string)
+                token = string_token(NM.string);
+            elseif ~isempty(NM.identifier)
+                token = identifier_token(NM.identifier);
+            elseif ~isempty(NM.ref)
+                token = identifier_token(NM.ref);
+            else
+                parseError = sprintf('Invalid token: %s', token);
+            end
+
+            s = strtrim(SP{2});
+            
+            tokens{end+1} = token;
         end
 
-        token = T{1};
+        end_token = struct('type', '(end)');
+        end_token.lbp = 0;
 
-        if token == '+' || token == '-'
-            token = operator_bin_token(token, 10);
-        elseif token == '*' || token == '/'
-            token = operator_bin_token(token, 20);
-        elseif token == '('
-            token = operator_opengroup_token();
-        elseif token == ')'
-            token = operator_closegroup_token();
-        elseif token == ','
-            token = operator_comma_token();
-        elseif ~isempty(NM.number)
-            token = numerical_token(NM.number);
-        elseif ~isempty(NM.string)
-            token = string_token(NM.string);
-        elseif ~isempty(NM.identifier)
-            token = identifier_token(NM.identifier);
-        elseif ~isempty(NM.ref)
-            token = identifier_token(NM.ref);
-        else
-            parseError = sprintf('Invalid token: %s', token);
-        end
-
-        s = strtrim(SP{2});
-        
-        tokens{end+1} = token;
-    end
-
-    end_token = struct('type', '(end)');
-    end_token.lbp = 0;
-
-    tokens{end+1} = end_token;
-
+        tokens{end+1} = end_token;
     end
 
     function t = next()
@@ -200,12 +185,16 @@ function [ast, parseError] = parse(sentence)
         index = index + 1;
     end
 
+
+    for k=1:length(grammar)
+        createSymbol(grammar{k}(@(bp) expression(bp)));
+    end
+
     ast = {};
 
     [tokens, parseError] = tokenizer(sentence);
 
-    if length(tokens) == 1
-        % TODO: Why do we need to exit here?
+    if length(tokens) == 1 || ~isempty(parseError)
         return;
     end
 
@@ -221,6 +210,7 @@ function [ast, parseError] = parse(sentence)
     if ~isempty(parseError)
         ast = {};
     end
+
 
 end
 

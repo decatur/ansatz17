@@ -4,7 +4,7 @@ It is a single file solution with about 200 lines of code and no dependencies.
 The test cases run successfully with GNU Octave 3.8.2 and MATLAB 2013b.
 Older versions may break the code.
 
-The parser emmits an Abstract Syntax Tree (AST). It's not realy a tree, but a Directed Acyclic Graph.
+The parser emits an Abstract Syntax Tree (AST). It's not really a tree, but a Directed Acyclic Graph.
 On this AST you can, for example,
 * evaluate (as an example see test/evalExpr.m)
 * validate
@@ -77,4 +77,15 @@ prettyPrintAST(parse('power(2, 2)'))
 | $4 |   funccall | head: $1 | tail: $2, $3,  |
 
 
+# Implementation Design
 
+The parser is of the top-down operator precedence variety based on ideas by Vaughan Pratt, see 
+http://effbot.org/zone/simple-top-down-parsing.htm or
+http://javascript.crockford.com/tdop/tdop.html
+
+TODO: Explain Advantage, disadvantage...
+
+Code must run on both Octave and MATLAB. The former may not support handles to nested functions.
+As a workaround we use anonymous functions instead.
+The scanner/tokenizer instantiates tokens, which in turn implement parser logic.
+This woefull fact prevents us from making the tokenizer a top-level function.
