@@ -14,7 +14,8 @@ As far as I know there is one [much more potent parser in MATLAB](http://www.cs.
 
 # Usage
 ```
-[ast, parseError] = parse(sentence)
+p = Parser(); p.setGrammar(ExprGrammar());
+[ast, parseError] = p.parse(sentence)
 ```
 
 ## Parameters

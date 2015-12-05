@@ -1,15 +1,29 @@
-function symbols = grammar()
-    symbols = {};
+function symbols = grammar(p)
 
-    function sym = operator_bin_token(expr, type, lbp)
-        sym = struct('type', type);
-        sym.lbp = lbp;
-        sym.led = @(left) struct('type', type, 'head', left, 'tail', expr(lbp))
-        sym.nud = @() error('Parse:syntax', 'Illegal syntax %s');
+
+    function node = binOpNode(sym, left, p)
+        node = struct('type', sym.type, 'head', left, 'tail', p.expression(sym.lbp));
     end
 
-    symbols{end+1} = @(expr) operator_bin_token(expr, '+', 10);
-    symbols{end+1} = @(expr) operator_bin_token(expr, '-', 10);
-    symbols{end+1} = @(expr) operator_bin_token(expr, '*', 20);
-    symbols{end+1} = @(expr) operator_bin_token(expr, '/', 20);
+
+    sym = struct('type', '+', 'lbp', 10);
+    sym.led = @(left) binOpNode(sym, left, p);
+    sym.nud = @() error('Parse:syntax', 'Illegal syntax');
+    p.createSymbol(sym);
+
+    sym = struct('type', '-', 'lbp', 10);
+    sym.led = @(left) binOpNode(sym, left, p);
+    sym.nud = @() error('Parse:syntax', 'Illegal syntax');
+    p.createSymbol(sym);
+    
+    sym = struct('type', '*', 'lbp', 20);
+    sym.led = @(left) binOpNode(sym, left, p);
+    sym.nud = @() error('Parse:syntax', 'Illegal syntax');
+    p.createSymbol(sym);
+    
+    sym = struct('type', '/', 'lbp', 20);
+    sym.led = @(left) binOpNode(sym, left, p);
+    sym.nud = @() error('Parse:syntax', 'Illegal syntax');
+    p.createSymbol(sym);
+
 end

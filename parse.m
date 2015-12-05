@@ -23,6 +23,7 @@ function [ast, parseError] = parse(sentence, grammar)
         t = token;
         token = next();
         left = addAstNode(t.nud());
+        token
         % TODO: Handle "structure has no member lbp"
         while rbp < token.lbp
             t = token;
@@ -185,10 +186,10 @@ function [ast, parseError] = parse(sentence, grammar)
         index = index + 1;
     end
 
-
-    for k=1:length(grammar)
-        createSymbol(grammar{k}(@(bp) expression(bp)));
-    end
+    p = struct;
+    p.createSymbol = @(sym) createSymbol(sym);
+    p.expression = @(bp) expression(bp);
+    grammar(p);
 
     ast = {};
 
