@@ -19,17 +19,17 @@ classdef ExprParser < Parser
                 node = struct('type', 'numerical');
                 node.value = str2double(value);
             end
-            sym = struct('type', 'numerical');
+            sym = struct('type', 'numerical', 'value', value);
             sym.nud = @() this.astNode(numericalNode('numerical', value));
         end
 
-        function sym = identifierToken(this, name)
-            function node = identifierNode(type, name)
+        function sym = identifierToken(this, value)
+            function node = identifierNode(type, value)
                 node = struct('type', 'identifier');
-                node.name = name;
+                node.value = value;
             end
-            sym = struct('type', 'identifier', 'value', name);
-            sym.nud = @() this.astNode(identifierNode('identifier', name));
+            sym = struct('type', 'identifier', 'value', value);
+            sym.nud = @() this.astNode(identifierNode('identifier', value));
         end
 
         function sym = stringToken(this, value)
@@ -37,7 +37,7 @@ classdef ExprParser < Parser
                 node = struct('type', 'string');
                 node.value = value;
             end
-            sym = struct('type', 'string');
+            sym = struct('type', 'string', 'value', name);
             sym.nud = @() this.astNode(stringNode('string', value));
         end
 
@@ -67,11 +67,6 @@ classdef ExprParser < Parser
             sym.nud = @() error('Parse:syntax', 'Illegal syntax');
             p.createSymbol(sym);
 
-            function v = advance1(p, type)
-                v = p.expression(0);
-                p.next(p, type);
-            end
-
             function node = argList(p, left)
                 node = struct('type', 'funccall');
                 node.head = left;
@@ -92,8 +87,8 @@ classdef ExprParser < Parser
         
             sym = struct('type', '(');
             % Needed in case '(' is opening group
-
             sym.nud = @() {v=p.expression(0); p.next(')'); v}{end}; % MATLAB may need subsref
+            
             % Needed in case '(' starts function argument
             sym.lbp = 150;
             sym.led = @(left) this.astNode(argList(p, left));
@@ -114,7 +109,7 @@ classdef ExprParser < Parser
         % Method overrides Parser.parse() to return the emitted AST.
 
             this.ast = {};
-            parseError = parse@Parser(this, sentence);
+            [~, parseError] = parse@Parser(this, sentence);
             ast = this.ast;
         end
 

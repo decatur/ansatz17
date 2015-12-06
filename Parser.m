@@ -17,30 +17,67 @@ classdef Parser < handle
         index
         sentence
         symbols
+        patterns
+    end
+
+    properties (SetAccess = private)
         pattern
     end
 
     methods (SetAccess = public)
 
+    function this = Parser()
+        this.patterns = struct();
+        this.patterns.identifier = '[a-z_][a-z0-9_]*';
+        stringDelimiter = '"';
+        this.patterns.string = sprintf('%s[^%s]*%s', stringDelimiter,stringDelimiter,stringDelimiter);
+        this.patterns.number = '\d+(\.\d*)?(e\d+)?';
+    end
+
+    function createSymbols()
+    end
+
 function init(this)
     this.symbols = struct();
     this.createSymbols(this);
 
-    % Concat all quoted symbol types
-    opPattern = strjoin(cellfun(@(sym) ['\' sym.type], struct2cell(this.symbols), 'UniformOutput', false), '');
-    identifierPattern = '[a-z_][a-z0-9_]*';
-    stringPattern = '[^"]*';
-    numberPattern = '\d+(\.\d*)?(e\d+)?';
+    if numfields(this.symbols) > 0
+        % Concat all quoted symbol types
+        this.patterns.op = strjoin(cellfun(@(sym) ['\' sym.type], struct2cell(this.symbols), 'UniformOutput', false), '');
+        this.patterns.op = ['[' this.patterns.op ']'];
+    end
 
-    this.pattern = sprintf('(?<identifier>%s)|(?<op>[%s])|"(?<string>%s)"|(?<number>%s)', identifierPattern, opPattern, stringPattern, numberPattern);
+    c = {};
+    patternNames = fieldnames(this.patterns);
+    for k=1:length(patternNames)
+        c{end+1} = sprintf('(?<%s>%s)', patternNames{k}, this.patterns.(patternNames{k}));
+    end
+
+    this.pattern = strjoin(c, '|');
+end
+
+function sym = numericalToken(this, value)
+    % Default implementation
+    sym = struct('type', 'numerical', 'value', value, 'nud', @() value, 'lbp', 0);
+end
+
+function sym = identifierToken(this, value)
+    % Default implementation
+    sym = struct('type', 'identifier', 'value', value, 'nud', @() value, 'lbp', 0);
+end
+
+function sym = stringToken(this, value)
+    % Default implementation
+    sym = struct('type', 'string', 'value', value, 'nud', @() value, 'lbp', 0);
 end
 
 function left = expression(this, rbp)
-    
     t = this.token;
     this.next();
     left = t.nud();
-    assert(isfield(this.token, 'lbp'), 'At %s', this.token.type);
+    if ~isfield(this.token, 'lbp')
+        error('At %s %s', this.token.type, this.token.value);
+    end
     while rbp < this.token.lbp
         t = this.token;
         this.next();
@@ -91,12 +128,14 @@ function [tokens, parseError] = tokenize(this, in)
 
         token = T{1};
 
-        if ~isempty(NM.op)
+        if isfield(NM, 'op') && ~isempty(NM.op)
             token = symbol(token);
         elseif ~isempty(NM.number)
             token = this.numericalToken(NM.number);
         elseif ~isempty(NM.string)
-            token = this.stringToken(NM.string);
+            % Octave Bug: Cannot write this.stringToken(NM.string(2:end-1))
+            s = NM.string(2:end-1);
+            token = this.stringToken(s);
         elseif ~isempty(NM.identifier)
             token = this.identifierToken(NM.identifier);
         else
@@ -113,7 +152,7 @@ function [tokens, parseError] = tokenize(this, in)
     tokens{end+1} = end_token;
 end
 
-function parseError = parse(this, sentence)
+function [tokens, parseError] = parse(this, sentence)
 % Parameters:
 %   sentence    The sentence to parse
 %
@@ -128,6 +167,7 @@ function parseError = parse(this, sentence)
     [this.tokens, parseError] = this.tokenize(sentence);
 
     if length(this.tokens) == 1 || ~isempty(parseError)
+        tokens = {};
         return;
     end
 
@@ -138,7 +178,10 @@ function parseError = parse(this, sentence)
         this.expression(0);
     catch e
         parseError = e.message;
+        this.tokens = {};
     end
+
+    tokens = this.tokens;
 
 end 
 

@@ -25,8 +25,8 @@ for k=1:length(ast)
     elseif strcmp(type, '-')
         ast{k}.value = ast{node.head}.value - ast{node.tail}.value;
     elseif strcmp(type, 'identifier')
-        if isfield(vars, node.name)
-            ast{k}.value = vars.(node.name);
+        if isfield(vars, node.value)
+            ast{k}.value = vars.(node.value);
         end
         if ~isfield(node, 'value')
             % TODO: This may be a function handle, so we cannot check for undefined value.
@@ -35,7 +35,7 @@ for k=1:length(ast)
     elseif strcmp(type, 'funccall')
         % Dereference argument list
         args = cellfun(@(elem) ast{elem}.value, node.tail, 'UniformOutput', false);
-        ast{k}.value = feval(ast{node.head}.name, args{:});
+        ast{k}.value = feval(ast{node.head}.value, args{:});
     else
         % A literal node
     end

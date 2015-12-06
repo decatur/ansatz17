@@ -6,12 +6,12 @@ function testExpr()
 
 
 function assertTest(s, expected)
-    [ast, parseError] = parse(s);
+    [ast, parseError] = p.parse(s);
     if ~isempty(parseError)
         fprintf(1, '%s %s\n', parseError, s);
         return
     end
-    observed = evalExpr(ast);
+    observed = evalExpr(ast, struct());
     if isempty(observed) && isempty(expected)    
         fprintf(1, 'OK empty\n');
     elseif isequaln(observed, expected)    
@@ -21,6 +21,8 @@ function assertTest(s, expected)
     end
     
 end
+
+p = ExprParser();
 
 assertTest('', []);
 assertTest('1', 1);
