@@ -1,7 +1,10 @@
 classdef Parser < handle
 %Parser Simple and fast scanner and parser.
 %Usage:
-%   p = Parser(); p.setGrammar(ExprGrammar());
+%   p = ExprParser();
+%   [ast, parseError] = p.parse('1+2*3')
+
+%   p = ExprParser();
 %   [ast, parseError] = p.parse('1+2*3')
 %
 % COPYRIGHT Wolfgang Kuehn 2015 under the MIT License (MIT).
@@ -14,23 +17,14 @@ classdef Parser < handle
         index
         sentence
         symbols
-        ast
-        grammar
         pattern
     end
 
     methods (SetAccess = public)
 
-function this = Parser(grammar)
-    %this = struct();
-end
-
-function setGrammar(this, grammar)
-    %Parameters:
-    %   grammar     The grammar rules
-    this.grammar = grammar;
+function init(this)
     this.symbols = struct();
-    grammar.createSymbols(this);
+    this.createSymbols(this);
 
     % Concat all quoted symbol types
     opPattern = strjoin(cellfun(@(sym) ['\' sym.type], struct2cell(this.symbols), 'UniformOutput', false), '');
@@ -42,24 +36,15 @@ function setGrammar(this, grammar)
 end
 
 function left = expression(this, rbp)
-    function ref = addAstNode(node)
-        this.ast{end+1} = node;
-        ref = length(this.ast);
-    end
+    
     t = this.token;
     this.next();
     left = t.nud();
-    if isstruct(left)
-        left = addAstNode(left);
-    end
     assert(isfield(this.token, 'lbp'), 'At %s', this.token.type);
     while rbp < this.token.lbp
         t = this.token;
         this.next();
         left = t.led(left);
-        if isstruct(left)
-            left = addAstNode(left);
-        end
     end
 end
 
@@ -109,11 +94,11 @@ function [tokens, parseError] = tokenize(this, in)
         if ~isempty(NM.op)
             token = symbol(token);
         elseif ~isempty(NM.number)
-            token = this.grammar.numericalToken(NM.number);
+            token = this.numericalToken(NM.number);
         elseif ~isempty(NM.string)
-            token = this.grammar.stringToken(NM.string);
+            token = this.stringToken(NM.string);
         elseif ~isempty(NM.identifier)
-            token = this.grammar.identifierToken(NM.identifier);
+            token = this.identifierToken(NM.identifier);
         else
             parseError = sprintf('Invalid token: %s', token);
         end
@@ -128,16 +113,18 @@ function [tokens, parseError] = tokenize(this, in)
     tokens{end+1} = end_token;
 end
 
-function [ast, parseError] = parse(this, sentence)
+function parseError = parse(this, sentence)
 % Parameters:
 %   sentence    The sentence to parse
 %
 % Returns:
-%   ast         Linked list of nodes representing an Abstract Syntax Tree
 %   parseError  An error string if a parse error has occured, otherwise empty
 %
 
-    this.ast = {};
+    if isempty(this.symbols)
+        this.init()
+    end
+
     [this.tokens, parseError] = this.tokenize(sentence);
 
     if length(this.tokens) == 1 || ~isempty(parseError)
@@ -153,11 +140,6 @@ function [ast, parseError] = parse(this, sentence)
         parseError = e.message;
     end
 
-    if ~isempty(parseError)
-        this.ast = {};
-    end
-
-    ast = this.ast;
 end 
 
 end % public methods

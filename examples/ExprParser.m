@@ -1,4 +1,4 @@
-classdef ExprGrammar < Parser
+classdef ExprParser < Parser
 %ExprGrammar Simple expression grammar for expressions of the form 1-(bar+3)*power(2,3)
     properties (SetAccess = public)
         ast
