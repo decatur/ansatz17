@@ -1,4 +1,5 @@
 classdef FuncExprParser < ExprParser
+%
 % %Usage:
 %   p = FuncExprParser();
 %   [ast, parseError] = p.parse('1+sin(2*3)')
@@ -28,7 +29,7 @@ classdef FuncExprParser < ExprParser
     methods (Access = public)
 
         function addGrammar(this)
-            addGrammar@ExprParser(this, this);
+            addGrammar@ExprParser(this);
 
             sym = this.symbol('(');
             sym.lbp = 150;

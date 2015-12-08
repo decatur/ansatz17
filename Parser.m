@@ -103,7 +103,7 @@ function next(this, varargin)
 end
 
 function createSymbol(this, sym)
-    fprintf(1, 'sym %s\n', sym.type);
+    % fprintf(1, 'sym %s\n', sym.type);
     key = sprintf('_%x', uint8(sym.type));
     this.symbols.(key) = sym;
 end
@@ -141,11 +141,12 @@ function [tokens, parseError] = tokenize(this, in)
         elseif ~isempty(NM.number)
             token = this.numericalToken(NM.number);
         elseif ~isempty(NM.string)
-            % Octave Bug: Cannot write this.stringToken(NM.string(2:end-1))
-            s = NM.string(2:end-1);
-            token = this.stringToken(s);
+            token = this.stringToken(NM.string);
         elseif ~isempty(NM.identifier)
             token = this.identifierToken(NM.identifier);
+        elseif ~isempty(NM.unit)
+            % TODO: Look up token creators
+            token = this.unitToken(NM.unit);
         else
             parseError = sprintf('Invalid token: %s', token);
         end

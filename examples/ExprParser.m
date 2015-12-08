@@ -39,11 +39,13 @@ classdef ExprParser < Parser
         end
 
         function sym = stringToken(this, value)
+            % Strip delimiters
+            value = value(2:end-1);
             function node = stringNode(type, value)
                 node = struct('type', 'string');
                 node.value = value;
             end
-            sym = struct('type', 'string', 'value', name);
+            sym = struct('type', 'string', 'value', value);
             sym.nud = @() this.astNode(stringNode('string', value));
         end
 
