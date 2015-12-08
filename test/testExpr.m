@@ -22,7 +22,7 @@ function assertTest(s, expected)
     
 end
 
-p = ExprParser();
+p = FuncExprParser();
 
 assertTest('', []);
 assertTest('1', 1);
