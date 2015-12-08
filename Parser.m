@@ -1,12 +1,15 @@
 classdef Parser < handle
-%Parser Simple and fast scanner and parser.
-%Usage:
-%   p = ExprParser();
-%   [ast, parseError] = p.parse('1+2*3')
-
-%   p = ExprParser();
-%   [ast, parseError] = p.parse('1+2*3')
+%Parser Simple but fast parser engine.
 %
+% This class is meant to be subclassed, see for example ExprParser().
+% Used directly it will only parse a sentence containing
+% numbers, variables and quoted strings.
+%
+%Usage:
+%
+%   p = Parser();
+%   [tokens, parseError] = p.parse('42 foo "Hello World"')
+
 % COPYRIGHT Wolfgang Kuehn 2015 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
 
@@ -24,7 +27,7 @@ classdef Parser < handle
         pattern
     end
 
-    methods (SetAccess = public)
+    methods (Access = public)
 
     function this = Parser()
         this.patterns = struct();
@@ -34,20 +37,22 @@ classdef Parser < handle
         this.patterns.number = '\d+(\.\d*)?(e\d+)?';
     end
 
-    function createSymbols()
+    function addGrammar(this)
+        % Base Parser has no grammar.
     end
 
 function init(this)
     this.symbols = struct();
-    this.createSymbols(this);
+    this.addGrammar();
+
+    c = {};
 
     if numfields(this.symbols) > 0
         % Concat all quoted symbol types
-        this.patterns.op = strjoin(cellfun(@(sym) ['\' sym.type], struct2cell(this.symbols), 'UniformOutput', false), '');
-        this.patterns.op = ['[' this.patterns.op ']'];
+        op = strjoin(cellfun(@(sym) regexptranslate('escape', sym.type), struct2cell(this.symbols), 'UniformOutput', false), '|');
+        c{end+1} = sprintf('(?<op>%s)', op);
     end
 
-    c = {};
     patternNames = fieldnames(this.patterns);
     for k=1:length(patternNames)
         c{end+1} = sprintf('(?<%s>%s)', patternNames{k}, this.patterns.(patternNames{k}));
@@ -98,8 +103,14 @@ function next(this, varargin)
 end
 
 function createSymbol(this, sym)
-    key = sprintf('%x', uint8(sym.type));
+    fprintf(1, 'sym %s\n', sym.type);
+    key = sprintf('_%x', uint8(sym.type));
     this.symbols.(key) = sym;
+end
+
+function sym = symbol(this, s)
+    key = sprintf('_%x', uint8(s));
+    sym = this.symbols.(key);
 end
 
 function [tokens, parseError] = tokenize(this, in)
@@ -108,10 +119,7 @@ function [tokens, parseError] = tokenize(this, in)
     % Example:
     %   [tokens, parseError] = p.tokenize('foo 33 +bar"123m23" 1.34')
 
-    function sym = symbol(s)
-        key = sprintf('%x', uint8(s));
-        sym = this.symbols.(key);
-    end
+    
 
     tokens = {};
     parseError = [];
@@ -129,7 +137,7 @@ function [tokens, parseError] = tokenize(this, in)
         token = T{1};
 
         if isfield(NM, 'op') && ~isempty(NM.op)
-            token = symbol(token);
+            token = this.symbol(token);
         elseif ~isempty(NM.number)
             token = this.numericalToken(NM.number);
         elseif ~isempty(NM.string)
@@ -187,7 +195,7 @@ end
 
 end % public methods
 
-methods (SetAccess = private)
+methods (Access = private)
 end % private methods
 
 end % Parser

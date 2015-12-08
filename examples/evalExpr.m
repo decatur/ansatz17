@@ -16,13 +16,16 @@ for k=1:length(ast)
     node = ast{k};    
     type = node.type;
 
-    if strcmp(type, '*')
-        ast{k}.value = ast{node.head}.value * ast{node.tail}.value;
-    elseif strcmp(type, '/')
-        ast{k}.value = ast{node.head}.value / ast{node.tail}.value;
-    elseif strcmp(type, '+')
+    % TODO: Use a map or attach operation to ast node.
+    %ast{k}.value = node.f(ast, vars);
+    
+    if type == '+'
         ast{k}.value = ast{node.head}.value + ast{node.tail}.value;
-    elseif strcmp(type, '-')
+    elseif type == '*'
+        ast{k}.value = ast{node.head}.value * ast{node.tail}.value;
+    elseif type == '/'
+        ast{k}.value = ast{node.head}.value / ast{node.tail}.value;
+    elseif type == '-'
         ast{k}.value = ast{node.head}.value - ast{node.tail}.value;
     elseif strcmp(type, 'identifier')
         if isfield(vars, node.value)

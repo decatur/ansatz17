@@ -1,11 +1,15 @@
 classdef ExprParser < Parser
-%ExprGrammar Simple expression grammar for expressions of the form 1-(bar+3)*power(2,3)
+% %Usage:
+%   p = ExprParser();
+%   [ast, parseError] = p.parse('1+2*3')
+
     properties (SetAccess = public)
         ast
     end
+    
     methods
 
-        function obj = ExprGrammar()
+        function this = ExprGrammar()
 
         end
         
@@ -18,6 +22,7 @@ classdef ExprParser < Parser
             function node = numericalNode(type, value)
                 node = struct('type', 'numerical');
                 node.value = str2double(value);
+                %node.f = @(ast, vars) node.value;
             end
             sym = struct('type', 'numerical', 'value', value);
             sym.nud = @() this.astNode(numericalNode('numerical', value));
@@ -27,6 +32,7 @@ classdef ExprParser < Parser
             function node = identifierNode(type, value)
                 node = struct('type', 'identifier');
                 node.value = value;
+                %node.f = @(ast, vars) vars.(value);
             end
             sym = struct('type', 'identifier', 'value', value);
             sym.nud = @() this.astNode(identifierNode('identifier', value));
@@ -41,65 +47,39 @@ classdef ExprParser < Parser
             sym.nud = @() this.astNode(stringNode('string', value));
         end
 
-        function createSymbols(this, p)
-
+        function addGrammar(this)
             function node = binOpNode(sym, left, p)
                 node = struct('type', sym.type, 'head', left, 'tail', p.expression(sym.lbp));
+                %node.f = @(ast, vars) ast{node.head}.value + ast{node.tail}.value;
             end
 
             sym = struct('type', '+', 'lbp', 10);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, p));
+            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
             sym.nud = @() error('Parse:syntax', 'Illegal syntax');
-            p.createSymbol(sym);
+            this.createSymbol(sym);
 
             sym = struct('type', '-', 'lbp', 10);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, p));
+            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
             sym.nud = @() error('Parse:syntax', 'Illegal syntax');
-            p.createSymbol(sym);
+            this.createSymbol(sym);
             
             sym = struct('type', '*', 'lbp', 20);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, p));
+            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
             sym.nud = @() error('Parse:syntax', 'Illegal syntax');
-            p.createSymbol(sym);
+            this.createSymbol(sym);
             
             sym = struct('type', '/', 'lbp', 20);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, p));
+            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
             sym.nud = @() error('Parse:syntax', 'Illegal syntax');
-            p.createSymbol(sym);
+            this.createSymbol(sym);
 
-            function node = argList(p, left)
-                node = struct('type', 'funccall');
-                node.head = left;
-                node.tail = {};
-
-                if ~strcmp(p.token.type, ')')
-                    while true
-                        node.tail{end+1} = p.expression(0);
-                        if ~strcmp(p.token.type, ',')
-                            break;
-                        end
-                        p.next(p, ',');
-                    end
-                end
-
-                p.next(p, ')');
-            end
-        
+            % Grouping operator
             sym = struct('type', '(');
-            % Needed in case '(' is opening group
-            sym.nud = @() {v=p.expression(0); p.next(')'); v}{end}; % MATLAB may need subsref
-            
-            % Needed in case '(' starts function argument
-            sym.lbp = 150;
-            sym.led = @(left) this.astNode(argList(p, left));
-            p.createSymbol(sym);
+            sym.nud = @() {v=this.expression(0); this.next(')'); v}{end}; % MATLAB may need subsref
+            this.createSymbol(sym);
 
             sym = struct('type', ')', 'lbp', 0);
-            p.createSymbol(sym);
-
-            sym = struct('type', ',', 'lbp', 0);
-            p.createSymbol(sym);
-
+            this.createSymbol(sym);
         end
 
         function [ast, parseError] = parse(this, sentence)
