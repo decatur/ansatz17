@@ -1,13 +1,13 @@
 classdef Qty
 %
 %Usage:
-%   q = Qty(3, 'kg');
+%   q = Qty(3, 'kg')
 %   q.to('g').toString() -> '3000[g]'
 %   q.to('meter') -> error: Cannot convert kg to meter
-
-
-    properties (Constant)
-    end
+%   
+%   q = Qty(3, 'bar')
+%   p = Qty(1, 'kg/s/cm/s')
+%   q.add(p).toString() -> '103[kilogram/meter/second/second]'
 
     properties (SetAccess = public)
         scalar
@@ -20,30 +20,28 @@ classdef Qty
         function qty = Qty(scalar, unit)
             qty.scalar = scalar;
             if ischar(unit)
-                [numerator, denominator] = Qty.parse(unit);
-                qty.numerator = numerator;
-                qty.denominator = denominator;
+                [qty.numerator, qty.denominator] = Qty.parse(unit);
+            % Bug: In Octave you cannot pass class instance to constructor???
+            % elseif isa(unit, 'Qty')
+            %    qty.numerator = unit.numerator;
+            %    qty.denominator = unit.denominator;
             end
-
-            % Assert valid unit
-            %[~] = Qty.getUnitByName(unit);
         end
 
         function unit = getUnit(this)
-        this.numerator
             if ~isempty(this.numerator) && ~isempty(this.denominator)
-                unit = sprintf('[%s/%s]', strjoin(this.numerator, '*'), strjoin(this.denominator, '*'));
+                unit = sprintf('%s/%s', strjoin(this.numerator, '*'), strjoin(this.denominator, '/'));
             elseif isempty(this.denominator)
-                unit = sprintf('[%s]', strjoin(this.numerator, '*'));
+                unit = sprintf('%s', strjoin(this.numerator, '*'));
             elseif isempty(this.numerator)
-                unit = sprintf('[1/%s]', strjoin(this.denominator, '*'));
+                unit = sprintf('1/%s', strjoin(this.denominator, '/'));
             else
-                unit = '[1]';
+                unit = '1';
             end
         end
 
         function s = toString(this)
-            s = sprintf('%f%s', this.scalar, this.getUnit());
+            s = sprintf('%g[%s]', this.scalar, this.getUnit());
         end
 
         function qty = resolve(this)
@@ -63,8 +61,8 @@ classdef Qty
                 den = [den q{3}];
             end
             qty = Qty(scalar, []);
-            qty.numerator = num;
-            qty.denominator = den;
+            qty.numerator = sort(num);
+            qty.denominator = sort(den);
         end
 
         function other = to(this, targetUnit)
@@ -75,33 +73,20 @@ classdef Qty
                 error('Cannot convert %s to %s', this.getUnit(), targetUnit);
             end
             other.scalar = p.scalar*other.scalar/q.scalar;
+        end
 
-            %num = {};
-            %den = {};
-            %scalar = this.scalar;
-            %for k=1:length(p.numerator)
-            %    a = Qty.getUnitByName(p.numerator{k})
-            %    b = Qty.getUnitByName(q.numerator{k})
-            %    num{end+1} = a{3};
-            %    if ~isequal(a{3}, b{3})
-            %        error('Cannot convert %s to %s', this.getUnit(), targetUnit);
-            %    end
-            %    scalar = scalar*a{2}/b{2};
-            %end
+        function b = sameUnit(this, other)
+            % this and other MUST be resolved
+            b = isequal(this.numerator, other.numerator) && isequal(this.denominator, other.denominator);
+        end
 
-            %for k=1:length(p.denominator)
-            %    a = Qty.getUnitByName(p.denominator{k});
-            %    b = Qty.getUnitByName(q.denominator{k});
-            %    den{end+1} = a{3};
-            %    if ~isequal(a{3}, b{3})
-            %        error('Cannot convert %s to %s', this.getUnit(), targetUnit);
-            %    end
-            %    scalar = scalar*b{2}/a{2};
-            %end
-
-            %other = Qty(p.scalar/q.scalar, []);
-            %other.numerator = p.numerator;
-            %other.denominator = p.denominator;
+        function sum = add(this, other)
+            sum = this.resolve();
+            q = other.resolve();
+            if ~sameUnit(sum, q)
+                error('Not compatible %s %s', this.toString(), other.toString());
+            end
+            sum.scalar = sum.scalar + q.scalar;
         end
 
     end
@@ -136,10 +121,14 @@ classdef Qty
                 units.kilogram = {{'kg' 'kilogram'} 1 {'kilogram'}};
                 units.g = {{'g' 'gram'} 1000 {'kilogram'}};
                 units.m = {{'m' 'meter'} 1 {'meter'}};
+                units.s = {{'s' 'second'} 1 {'second'}};
                 units.km = {{'km' 'kilometer'} 1000 {'meter'}};
-                units.cm = {{'cm' 'centimeter'} 0.001 {'meter'}};
+                units.cm = {{'cm' 'centimeter'} 1e-2 {'meter'}};
+                units.mm = {{'mm' 'milimeter'} 1e-3 {'meter'}};
                 units.l = {{'l' 'liter'} 1e-3 {'meter' 'meter' 'meter'}};
                 units.ml = {{'ml' 'mililiter'} 1e-6 {'meter' 'meter' 'meter'}};
+                units.bar = {{'bar'} 1 {'kilogram'} {'meter' 'second' 'second'}};
+
 
                 % Add all aliases to map.
                 names = fieldnames(units);

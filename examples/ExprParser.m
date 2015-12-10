@@ -1,5 +1,6 @@
 classdef ExprParser < Parser
-% %Usage:
+% 
+%Usage:
 %   p = ExprParser();
 %   [ast, parseError] = p.parse('1+2*3')
 
@@ -95,6 +96,6 @@ classdef ExprParser < Parser
             ast = this.ast;
         end
 
-    end % methods
-end % classdef
+    end
+end
 

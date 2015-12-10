@@ -1,6 +1,6 @@
 classdef QtyExprParser < FuncExprParser
 %
-% %Usage:
+%Usage:
 %   p = QtyExprParser();
 %   [ast, parseError] = p.parse('1[g] + 2[kg]')
 
@@ -13,6 +13,9 @@ classdef QtyExprParser < FuncExprParser
         end
 
         function sym = unitToken(this, value)
+            % Strip delimiters, for example [kg] -> kg
+            value = value(2:end-1);
+
             function node = unitNode(type, value)
                 node = struct('type', 'unit', 'value', value);
             end
@@ -30,4 +33,3 @@ classdef QtyExprParser < FuncExprParser
 
     end
 end
-
