@@ -12,6 +12,10 @@ if length(ast) == 0
     return;
 end
 
+if nargin == 1
+    vars = struct;
+end
+
 for k=1:length(ast)
     node = ast{k};    
     type = node.type;
@@ -35,6 +39,10 @@ for k=1:length(ast)
             % TODO: This may be a function handle, so we cannot check for undefined value.
             %error('Eval:undefined', '%s undefined', node.name);
         end
+    elseif strcmp(type, 'qty')
+        qty = node.unit;
+        qty.scalar = ast{node.value}.value;
+        ast{k}.value = qty;
     elseif strcmp(type, 'funccall')
         % Dereference argument list
         args = cellfun(@(elem) ast{elem}.value, node.tail, 'UniformOutput', false);

@@ -91,7 +91,7 @@ function left = expression(this, rbp)
 end
 
 function next(this, varargin)
-% Advance to next token. The optional second argument is an expected token type for the current token.
+    % Advance to next token. The optional second argument is an expected token type for the current token.
     if nargin == 2
         assert(strcmp(this.token.type, varargin{1}));
     end
@@ -100,6 +100,15 @@ function next(this, varargin)
     end
     this.token = this.tokens{this.index};
     this.index = this.index + 1;
+end
+
+function previous(this)
+    % Backtrack one token.
+    if this.index < 2
+        error();
+    end
+    this.index = this.index - 1;
+    this.token = this.tokens{this.index-1};
 end
 
 function createSymbol(this, sym)
