@@ -2,11 +2,12 @@ classdef QtyExprParser < FuncExprParser
 %
 %Usage:
 %   p = QtyExprParser();
-%   ast = p.parse('2kg + 1kg');
+%   [ast, parseError] = p.parse('2kg + 1kg');
 %   evalExpr(ast)                   -> 3 kilogram
 %
-%   ast = p.parse('2m / (T s)');
-%   evalExpr(ast, struct('T', 5))   -> 0.4 meter/second
+%   ast = p.parse('2m / (t s)');
+%   scope = struct('t', 5);
+%   evalExpr(ast, scope)           -> 0.4 meter/second
 
     properties (SetAccess = public)
     end
@@ -45,9 +46,11 @@ classdef QtyExprParser < FuncExprParser
                 node.value = value;
                 %node.f = @(ast, vars) vars.(value);
             end
-            if strcmp(value, 'kg') || strcmp(value, 'm') || strcmp(value, 's')
+            if ~isempty(Qty.lookupUnit(value))
+                % TODO: Subsequently use the discovered unit by extending Qty
                 sym = struct('type', 'unit', 'value', value, 'lbp', 1000);
                 sym.led = @(left) this.astNode(this.parseUnits(left, sym));
+                sym.nud = @() error('Parse error at %s', value)
             else
                 sym = struct('type', 'identifier', 'value', value);
                 sym.nud = @() this.astNode(identifierNode('identifier', value));

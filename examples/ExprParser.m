@@ -58,12 +58,12 @@ classdef ExprParser < Parser
 
             sym = struct('type', '+', 'lbp', 10);
             sym.led = @(left) this.astNode(binOpNode(sym, left, this));
-            sym.nud = @() error('Parse:syntax', 'Illegal syntax');
+            sym.nud = @() {v=this.expression(30); this.astNode(struct('type', 'uplus', 'value', v))}{end};
             this.createSymbol(sym);
 
             sym = struct('type', '-', 'lbp', 10);
             sym.led = @(left) this.astNode(binOpNode(sym, left, this));
-            sym.nud = @() error('Parse:syntax', 'Illegal syntax');
+            sym.nud = @() {v=this.expression(30); this.astNode(struct('type', 'uminus', 'value', v))}{end};
             this.createSymbol(sym);
             
             sym = struct('type', '*', 'lbp', 20);
@@ -92,7 +92,7 @@ classdef ExprParser < Parser
         % Method overrides Parser.parse() to return the emitted AST.
 
             this.ast = {};
-            [~, parseError] = parse@Parser(this, sentence);
+            parseError = parse@Parser(this, sentence);
             ast = this.ast;
         end
 

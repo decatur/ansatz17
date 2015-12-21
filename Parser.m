@@ -8,7 +8,7 @@ classdef Parser < handle
 %Usage:
 %
 %   p = Parser();
-%   [tokens, parseError] = p.parse('42 foo "Hello World"')
+%   [tokens, parseError] = p.tokenize('42 foo "Hello World"')
 
 % COPYRIGHT Wolfgang Kuehn 2015 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
@@ -37,58 +37,39 @@ classdef Parser < handle
         this.patterns.number = '\d+(\.\d*)?(e\d+)?';
     end
 
-    function addGrammar(this)
-        % Base Parser has no grammar.
+    function init(this)
+        this.symbols = struct();
+        this.addGrammar();
+
+        c = {};
+
+        if numfields(this.symbols) > 0
+            % Concat all quoted symbol types
+            op = strjoin(cellfun(@(sym) regexptranslate('escape', sym.type), struct2cell(this.symbols), 'UniformOutput', false), '|');
+            c{end+1} = sprintf('(?<op>%s)', op);
+        end
+
+        patternNames = fieldnames(this.patterns);
+        for k=1:length(patternNames)
+            c{end+1} = sprintf('(?<%s>%s)', patternNames{k}, this.patterns.(patternNames{k}));
+        end
+
+        this.pattern = strjoin(c, '|');
     end
 
-function init(this)
-    this.symbols = struct();
-    this.addGrammar();
-
-    c = {};
-
-    if numfields(this.symbols) > 0
-        % Concat all quoted symbol types
-        op = strjoin(cellfun(@(sym) regexptranslate('escape', sym.type), struct2cell(this.symbols), 'UniformOutput', false), '|');
-        c{end+1} = sprintf('(?<op>%s)', op);
-    end
-
-    patternNames = fieldnames(this.patterns);
-    for k=1:length(patternNames)
-        c{end+1} = sprintf('(?<%s>%s)', patternNames{k}, this.patterns.(patternNames{k}));
-    end
-
-    this.pattern = strjoin(c, '|');
-end
-
-function sym = numericalToken(this, value)
-    % Default implementation
-    sym = struct('type', 'numerical', 'value', value, 'nud', @() value, 'lbp', 0);
-end
-
-function sym = identifierToken(this, value)
-    % Default implementation
-    sym = struct('type', 'identifier', 'value', value, 'nud', @() value, 'lbp', 0);
-end
-
-function sym = stringToken(this, value)
-    % Default implementation
-    sym = struct('type', 'string', 'value', value, 'nud', @() value, 'lbp', 0);
-end
-
-function left = expression(this, rbp)
-    t = this.token;
-    this.next();
-    left = t.nud();
-    if ~isfield(this.token, 'lbp')
-        error('At %s %s', this.token.type, this.token.value);
-    end
-    while rbp < this.token.lbp
+    function left = expression(this, rbp)
         t = this.token;
         this.next();
-        left = t.led(left);
+        left = t.nud();
+        if ~isfield(this.token, 'lbp')
+            error('At %s %s', this.token.type, this.token.value);
+        end
+        while rbp < this.token.lbp
+            t = this.token;
+            this.next();
+            left = t.led(left);
+        end
     end
-end
 
 function next(this, varargin)
     % Advance to next token. The optional second argument is an expected token type for the current token.
@@ -128,8 +109,6 @@ function [tokens, parseError] = tokenize(this, in)
     % Example:
     %   [tokens, parseError] = p.tokenize('foo 33 +bar"123m23" 1.34')
 
-    
-
     tokens = {};
     parseError = [];
     s = strtrim(in);
@@ -153,9 +132,6 @@ function [tokens, parseError] = tokenize(this, in)
             token = this.stringToken(NM.string);
         elseif ~isempty(NM.identifier)
             token = this.identifierToken(NM.identifier);
-        elseif ~isempty(NM.unit)
-            % TODO: Look up token creators
-            token = this.unitToken(NM.unit);
         else
             parseError = sprintf('Invalid token: %s', token);
         end
@@ -170,42 +146,40 @@ function [tokens, parseError] = tokenize(this, in)
     tokens{end+1} = end_token;
 end
 
-function [tokens, parseError] = parse(this, sentence)
-% Parameters:
-%   sentence    The sentence to parse
-%
-% Returns:
-%   parseError  An error string if a parse error has occured, otherwise empty
-%
-
-    if isempty(this.symbols)
-        this.init()
-    end
-
-    [this.tokens, parseError] = this.tokenize(sentence);
-
-    if length(this.tokens) == 1 || ~isempty(parseError)
-        tokens = {};
-        return;
-    end
-
-    this.index = 1;
-    this.next();
-    
-    try
-        this.expression(0);
-    catch e
-        parseError = e.message;
-        this.tokens = {};
-    end
-
-    tokens = this.tokens;
-
-end 
-
 end % public methods
 
-methods (Access = private)
+methods (Access = public)
+
+    function parseError = parse(this, sentence)
+    % Parameters:
+    %   sentence    The sentence to parse
+    %
+    % Returns:
+    %   parseError  An error string if a parse error has occured, otherwise empty
+    %
+
+        if isempty(this.symbols)
+            this.init()
+        end
+
+        [this.tokens, parseError] = this.tokenize(sentence);
+
+        if length(this.tokens) == 1 || ~isempty(parseError)
+            return;
+        end
+
+        this.index = 1;
+        this.next();
+        
+        try
+            this.expression(0);
+        catch e
+            parseError = e.message;
+            this.tokens = {};
+        end
+
+    end 
+
 end % private methods
 
 end % Parser

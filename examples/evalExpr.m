@@ -31,6 +31,10 @@ for k=1:length(ast)
         ast{k}.value = ast{node.head}.value / ast{node.tail}.value;
     elseif type == '-'
         ast{k}.value = ast{node.head}.value - ast{node.tail}.value;
+    elseif strcmp(type, 'uminus')
+        ast{k}.value = -ast{node.value}.value;
+    elseif strcmp(type, 'uplus')
+        ast{k}.value = +ast{node.value}.value;
     elseif strcmp(type, 'identifier')
         if isfield(vars, node.value)
             ast{k}.value = vars.(node.value);
