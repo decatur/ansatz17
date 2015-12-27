@@ -19,24 +19,25 @@ classdef ExprParser < Parser
             ref = length(this.ast);
         end
 
+        function node = numericalNode(this, value)
+            node = struct('type', 'numerical');
+            node.value = str2double(value);
+            %node.f = @(ast, vars) node.value;
+        end
+
         function sym = numericalToken(this, value)
-            function node = numericalNode(type, value)
-                node = struct('type', 'numerical');
-                node.value = str2double(value);
-                %node.f = @(ast, vars) node.value;
-            end
             sym = struct('type', 'numerical', 'value', value);
-            sym.nud = @() this.astNode(numericalNode('numerical', value));
+            sym.nud = @() this.astNode(this.numericalNode(value));
+        end
+
+        function node = identifierNode(this, value)
+            node = struct('type', 'identifier');
+            node.value = value;
         end
 
         function sym = identifierToken(this, value)
-            function node = identifierNode(type, value)
-                node = struct('type', 'identifier');
-                node.value = value;
-                %node.f = @(ast, vars) vars.(value);
-            end
             sym = struct('type', 'identifier', 'value', value);
-            sym.nud = @() this.astNode(identifierNode('identifier', value));
+            sym.nud = @() this.astNode(this.identifierNode(value));
         end
 
         function sym = stringToken(this, value)

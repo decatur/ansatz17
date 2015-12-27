@@ -14,18 +14,17 @@ classdef QtyExprParser < FuncExprParser
     methods
 
         
-        function node = parseUnits(this, left, firstUnit)
+        function qty = parseUnits(this)
             qty = Qty(1);
-            qty.numerator = {firstUnit.value};
+            qty.numerator = {this.token.value};
+            this.next();
 
             while this.token.type == '/' || this.token.type == '*'
                 type = this.token.type;
                 this.next();
                 
                 if ~strcmp(this.token.type, 'unit')
-                    this.previous();
                     break;
-                    %error('Unit expected, found %s', this.token.value);
                 end
 
                 if type == '*'
@@ -36,29 +35,28 @@ classdef QtyExprParser < FuncExprParser
 
                 this.next();
             end
-
-            node = struct('type', 'qty', 'value', left, 'unit', qty);
         end
 
-        function sym = identifierToken(this, value)
-            function node = identifierNode(type, value)
+        function node = numericalNode(this, value)
+        % Overloads function in ExprParser class.
+            if strcmp(this.token.type, 'identifier')
+                qty = this.parseUnits();
+                node = struct('type', 'qty', 'value', value, 'unit', qty);
+            else
+                node = struct('type', 'numerical');
+                node.value = str2double(value);
+            end
+        end
+
+        function node = identifierNode(this, value)
+        % Overloads function in ExprParser class.
+            if strcmp(this.token.type, 'identifier')
+                qty = this.parseUnits();
+                node = struct('type', 'qty', 'value', value, 'unit', qty);
+            else
                 node = struct('type', 'identifier');
                 node.value = value;
-                %node.f = @(ast, vars) vars.(value);
             end
-            if ~isempty(Qty.lookupUnit(value))
-                % TODO: Subsequently use the discovered unit by extending Qty
-                sym = struct('type', 'unit', 'value', value, 'lbp', 1000);
-                sym.led = @(left) this.astNode(this.parseUnits(left, sym));
-                sym.nud = @() error('Parse error at %s', value)
-            else
-                sym = struct('type', 'identifier', 'value', value);
-                sym.nud = @() this.astNode(identifierNode('identifier', value));
-            end
-        end
-
-        function addGrammar(this, p)
-            addGrammar@FuncExprParser(this);
         end
 
     end

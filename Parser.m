@@ -84,7 +84,7 @@ function next(this, varargin)
 end
 
 function previous(this)
-    % Backtrack one token.
+    % Backtrack one token. If you are using this method you probably have an issue with your grammar or its implementation.
     if this.index < 2
         error();
     end

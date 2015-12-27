@@ -24,28 +24,35 @@ classdef Qty
     methods
 
         function qty = Qty(scalar, unit)
-            qty.scalar = scalar;
-            if nargin == 2 && ischar(unit)
-                [qty.numerator, qty.denominator] = Qty.parse(unit);
-            % Bug: In Octave you cannot pass class instance to constructor???
-            % elseif isa(unit, 'Qty')
-            %    qty.numerator = unit.numerator;
-            %    qty.denominator = unit.denominator;
+            if nargin == 1 && ischar(scalar)
+                % Create a quantity from a string, for example '1 year'.
+                namedToken = regexp(scalar, '^(?<scalar>(\+|\-)?\d+(\.\d*)?(e(\+|\-)?\d+)?)\s*(?<unit>.*)$', 'once', 'ignorecase', 'names');
+                qty.scalar = str2double(namedToken.scalar);
+                [qty.numerator, qty.denominator] = Qty.parse(namedToken.unit);
             else
-                qty.numerator = {};
-                qty.denominator = {};
+                qty.scalar = scalar;
+                if nargin == 2 && ischar(unit)
+                    [qty.numerator, qty.denominator] = Qty.parse(unit);
+                % Bug: In Octave you cannot pass class instance to constructor???
+                % elseif isa(unit, 'Qty')
+                %    qty.numerator = unit.numerator;
+                %    qty.denominator = unit.denominator;
+                else
+                    qty.numerator = {};
+                    qty.denominator = {};
+                end
             end
         end
 
         function unit = getUnit(this)
+            % Returns a string representation of the unit. The unit 1 is returned as empty string.
             if ~isempty(this.numerator) && ~isempty(this.denominator)
                 unit = sprintf('%s/%s', strjoin(this.numerator, '*'), strjoin(this.denominator, '/'));
             elseif isempty(this.denominator)
+                % Note we also get here if unit is 1.
                 unit = sprintf('%s', strjoin(this.numerator, '*'));
             elseif isempty(this.numerator)
                 unit = sprintf('1/%s', strjoin(this.denominator, '/'));
-            else
-                unit = '1';
             end
         end
 
@@ -54,7 +61,8 @@ classdef Qty
         end
 
         function s = toString(this)
-            s = sprintf('%g %s', this.scalar, this.getUnit());
+            % Need to trim in case unit is 1, which has empty representation.
+            s = strtrim(sprintf('%g %s', this.scalar, this.getUnit()));
         end
 
         function qty = resolve(this)
@@ -197,20 +205,24 @@ classdef Qty
             % Example: unit = 'a*b/c*d';
             numerator = {};
             denominator = {};
-            [S, E, TE, M, T, NM, SP] = regexp(unit, '[a-z]+', 'ignorecase');
+            [S, E, TE, M, T, NM, SP] = regexp(unit, '[a-z]+|1', 'ignorecase');
             for k=1:length(M)
+                if M{k} == '1'
+                    continue;
+                end
                 op = strtrim(SP{k});
                 if op == '/'
                     denominator{end+1} = M{k};
-                else
-                    assert(isempty(op) || op == '*');
+                elseif isempty(op) || op == '*'
                     numerator{end+1} = M{k};
+                else
+                    error('Invalid unit %s ', op);
                 end
             end
         end
 
         function unit = getUnitByName(s)
-            unit = lookupUnit(s);
+            unit = Qty.lookupUnit(s);
             if isempty(unit); error('Unknown unit %s ', s); end;
         end
 
@@ -223,11 +235,11 @@ classdef Qty
 
             if isempty(units)
                 prefixes = struct();
-                prefixes.M = prefixes.Mega =  1e6;
-                prefixes.k = prefixes.kilo =  1e3;
-                prefixes.c = refixes.centi =  1e-2;
-                prefixes.m = prefixes.milli = 1e-3;
-                prefixes.u = prefixes.micro = 1e-6;
+                prefixes.M = 1e6; %prefixes.Mega = 1e6;
+                prefixes.k = 1e3; %prefixes.kilo = 1e3;
+                prefixes.c = 1e-2; %prefixes.centi = 1e-2;
+                prefixes.m = 1e-3; %prefixes.milli = 1e-3;
+                prefixes.u = 1e-6; %prefixes.micro = 1e-6;
 
                 units = struct();
 
@@ -241,7 +253,7 @@ classdef Qty
                 units.AU={{'AU','astronomical_unit'},149597900000,{'meter'}};
                 units.bar={{'bar','bars'},100000,{'kilogram'},{'meter','second','second'}};
                 units.base_pair={{'base_pair','bp'},1,{'each'}};
-                units.bequerel={{'Bq','bequerel','bequerels'},1,{'1'},{'second'}};
+                units.bequerel={{'Bq','bequerel','bequerels'},1,{},{'second'}};
                 units.bit={{'b','bit','bits'},0.125,{'byte'}};
                 units.bpm={{'bpm'},0.016666666666666666,{'count'},{'second'}};
                 units.bps={{'bps'},0.125,{'byte'},{'second'}};
@@ -262,7 +274,7 @@ classdef Qty
                 units.count={{'count'},1,{'each'}};
                 units.cpm={{'cpm'},0.016666666666666666,{'count'},{'second'}};
                 units.cup={{'cu','cup','cups'},0.000236588238,{'meter','meter','meter'}};
-                units.curie={{'Ci','curie','curies'},37000000000,{'1'},{'second'}};
+                units.curie={{'Ci','curie','curies'},37000000000,{},{'second'}};
                 units.dalton={{'Da','Dalton','Daltons','dalton','daltons'},1.660538921e-27,{'kilogram'}};
                 units.day={{'d','day','days'},86400,{'second'}};
                 units.decade={{'decade','decades'},315569260,{'second'}};
@@ -295,7 +307,7 @@ classdef Qty
                 units.gross={{'gr','gross'},144,{'dozen','dozen'}};
                 units.hectare={{'hectare'},10000,{'meter','meter'}};
                 units.henry={{'H','Henry','henry'},1,{'meter','meter','kilogram'},{'second','second','ampere','ampere'}};
-                units.hertz={{'Hz','hertz','Hertz'},1,{'1'},{'second'}};
+                units.hertz={{'Hz','hertz','Hertz'},1,{},{'second'}};
                 units.horsepower={{'hp','horsepower'},745.699872,{'kilogram','meter','meter'},{'second','second','second'}};
                 units.hour={{'h','hr','hrs','hour','hours'},3600,{'second'}};
                 units.inch={{'in','inch','inches'},0.0254,{'meter'}};
@@ -323,7 +335,7 @@ classdef Qty
                 units.mmHg={{'mmHg'},133.322368,{'kilogram'},{'meter','second','second'}};
                 units.molar={{'M','molar'},1000,{'mole'},{'meter','meter','meter'}};
                 units.mole={{'mol','mole'},1,{'mole'}};
-                units.molecule={{'molecule','molecules'},1,{'1'}};
+                units.molecule={{'molecule','molecules'},1,{}};
                 units.mph={{'mph'},0.44704,{'meter'},{'second'}};
                 units.naut_mile={{'naut_mile','nmi'},1852,{'meter'}};
                 units.newton={{'N','Newton','newton'},1,{'kilogram','meter'},{'second','second'}};
@@ -333,7 +345,7 @@ classdef Qty
                 units.ounce={{'oz','ounce','ounces'},0.0283495231,{'kilogram'}};
                 units.parsec={{'pc','parsec','parsecs'},30856780000000000,{'meter'}};
                 units.pascal={{'Pa','pascal','Pascal'},1,{'kilogram'},{'meter','second','second'}};
-                units.percent={{'percent'},0.01,{'1'}};
+                units.percent={{'percent'},0.01,{}};
                 units.pica={{'pica','picas'},0.00423333333,{'meter'}};
                 units.pint={{'pt','pint','pints'},0.000473176475,{'meter','meter','meter'}};
                 units.pixel={{'pixel','px'},1,{'each'}};
@@ -342,8 +354,8 @@ classdef Qty
                 units.pound={{'lbs','lb','pound','pounds'},0.45359237,{'kilogram'}};
                 units.pound_force={{'lbf','pound_force'},4.448222,{'kilogram','meter'},{'second','second'}};
                 units.ppi={{'ppi'},1,{'pixel'},{'inch'}};
-                units.ppm={{'ppm'},0.000001,{'1'}};
-                units.ppt={{'ppt'},1e-9,{'1'}};
+                units.ppm={{'ppm'},0.000001,{}};
+                units.ppt={{'ppt'},1e-9,{}};
                 units.psi={{'psi'},6894.76,{'kilogram'},{'meter','second','second'}};
                 units.quart={{'qt','quart','quarts'},0.00094635295,{'meter','meter','meter'}};
                 units.radian={{'rad','radian','radians'},1,{'radian'}};
@@ -390,6 +402,11 @@ classdef Qty
                 end
             end % Initialization
 
+            if s == '1'
+                unit = {{},1,{},{}};
+                return;
+            end
+            
             if isfield(units, s)
                 unit = units.(s);
                 return;
@@ -417,3 +434,4 @@ classdef Qty
 
     end
 end
+
