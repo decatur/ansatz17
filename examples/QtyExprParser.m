@@ -39,12 +39,14 @@ classdef QtyExprParser < FuncExprParser
 
         function node = numericalNode(this, value)
         % Overloads function in ExprParser class.
+            node = struct('type', 'numerical');
+            node.value = str2double(value);
+
             if strcmp(this.token.type, 'identifier')
                 qty = this.parseUnits();
-                node = struct('type', 'qty', 'value', value, 'unit', qty);
+                node = struct('type', 'qty', 'value', this.astNode(node), 'unit', qty);
             else
-                node = struct('type', 'numerical');
-                node.value = str2double(value);
+                
             end
         end
 
