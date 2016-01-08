@@ -12,10 +12,6 @@ classdef ExprParser < Parser
     end
     
     methods
-
-        function this = ExprGrammar()
-
-        end
         
         function ref = astNode(this, node)
             this.ast{end+1} = node;
