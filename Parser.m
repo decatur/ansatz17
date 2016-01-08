@@ -10,21 +10,21 @@ classdef Parser < handle
 %   p = Parser();
 %   [tokens, parseError] = p.tokenize('42 foo "Hello World"')
 
-% COPYRIGHT Wolfgang Kuehn 2015 under the MIT License (MIT).
+% COPYRIGHT Wolfgang Kuehn 2016 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
 
 
     properties (SetAccess = public)
-        token
-        tokens
-        index
-        sentence
-        symbols
-        patterns
+        sentence    % The sentence to be parsed
+        tokens      % All tokens in the sentence
+        token       % The current token
+        index       % The index of the current token
+        symbols     % Dictionary of symbols
+        patterns    % 
     end
 
     properties (SetAccess = private)
-        pattern
+        pattern     % 
     end
 
     methods (Access = public)
@@ -150,13 +150,12 @@ end % public methods
 
 methods (Access = public)
 
-    function parseError = parse(this, sentence)
+    function parseError = parseInternal(this, sentence)
     % Parameters:
     %   sentence    The sentence to parse
     %
     % Returns:
     %   parseError  An error string if a parse error has occured, otherwise empty
-    %
 
         if isempty(this.symbols)
             this.init()
@@ -182,4 +181,4 @@ methods (Access = public)
 
 end % private methods
 
-end % Parser
+end % classdef

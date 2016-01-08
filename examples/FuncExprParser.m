@@ -1,6 +1,6 @@
 classdef FuncExprParser < ExprParser
 %
-% %Usage:
+%Usage:
 %   p = FuncExprParser();
 %   [ast, parseError] = p.parse('1+sin(2*3)')
     

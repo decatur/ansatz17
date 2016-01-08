@@ -3,6 +3,9 @@ classdef ExprParser < Parser
 %Usage:
 %   p = ExprParser();
 %   [ast, parseError] = p.parse('1+2*3')
+%
+% COPYRIGHT Wolfgang Kuehn 2016 under the MIT License (MIT).
+% Origin is https://github.com/decatur/ansatz17.
 
     properties (SetAccess = public)
         ast
@@ -52,28 +55,28 @@ classdef ExprParser < Parser
         end
 
         function addGrammar(this)
-            function node = binOpNode(sym, left, p)
-                node = struct('type', sym.type, 'head', left, 'tail', p.expression(sym.lbp));
+            function node = binOpNode(type, lbp, left, p)
+                node = struct('type', type, 'head', left, 'tail', p.expression(lbp));
                 %node.f = @(ast, vars) ast{node.head}.value + ast{node.tail}.value;
             end
 
             sym = struct('type', '+', 'lbp', 10);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
+            sym.led = @(left) this.astNode(binOpNode('plus', sym.lbp, left, this));
             sym.nud = @() {v=this.expression(30); this.astNode(struct('type', 'uplus', 'value', v))}{end};
             this.createSymbol(sym);
 
             sym = struct('type', '-', 'lbp', 10);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
+            sym.led = @(left) this.astNode(binOpNode('minus', sym.lbp, left, this));
             sym.nud = @() {v=this.expression(30); this.astNode(struct('type', 'uminus', 'value', v))}{end};
             this.createSymbol(sym);
             
             sym = struct('type', '*', 'lbp', 20);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
+            sym.led = @(left) this.astNode(binOpNode('times', sym.lbp, left, this));
             sym.nud = @() error('Parse:syntax', 'Illegal syntax');
             this.createSymbol(sym);
             
             sym = struct('type', '/', 'lbp', 20);
-            sym.led = @(left) this.astNode(binOpNode(sym, left, this));
+            sym.led = @(left) this.astNode(binOpNode('divide', sym.lbp, left, this));
             sym.nud = @() error('Parse:syntax', 'Illegal syntax');
             this.createSymbol(sym);
 
@@ -93,7 +96,7 @@ classdef ExprParser < Parser
         % Method overrides Parser.parse() to return the emitted AST.
 
             this.ast = {};
-            parseError = parse@Parser(this, sentence);
+            parseError = parseInternal(this, sentence);
             ast = this.ast;
         end
 
