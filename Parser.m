@@ -10,7 +10,7 @@ classdef Parser < handle
 %   p = Parser();
 %   [tokens, parseError] = p.tokenize('42 foo "Hello World"')
 
-% COPYRIGHT Wolfgang Kuehn 2016 under the MIT License (MIT).
+% COPYRIGHT Wolfgang Kuehn 2015-2016 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
 
 

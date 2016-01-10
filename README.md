@@ -16,13 +16,12 @@ There are no dependencies.
 addpath('examples');
 p = ExprParser();
 [ast, parseError] = p.parse('1+2*3');
-Evaluator(ast).exec()
-ans = 7
+y = ExprEvaluator(ast).exec()   % y = 7
 ```
 
 # Usage
 
-# Provided Sample Grammars
+You must subclass `Parser` to define your own grammar. The following subclasses are provided as examples
 
 ## ExprParser
 
@@ -33,7 +32,7 @@ and the prefix `-` and `+` operations.
 p = ExprParser();
 [ast, parseError] = p.parse('x+2*3');
 scope = struct('x', 1);
-Evaluator(ast).exec(scope)
+QtyEvaluator(ast).exec(scope)
 ans = 7
 ```
 
@@ -44,11 +43,18 @@ The class 'FuncExprParser' extends `ExprParser` to also support function calls.
 ```
 p = FuncExprParser();
 [ast, parseError] = p.parse('power(sin(x),2) + power(cos(x),2)');
-scope = struct('x', 1.5);
-Evaluator(ast).exec(scope)
-ans = 1
+scope = struct('x', 1.2345);
+y = QtyEvaluator(ast).exec(scope)   % y = 1
 ```
+## QtyExprParser
 
+The class 'QtyExprParser' in the sister repository https://github.com/decatur/ansatz19 extends to quantities.
+
+```
+p = QtyExprParser();
+[ast, parseError] = p.parse('2kg + 1kg');
+qty = QtyEvaluator(ast).exec()      % qty = 3 kilogram
+```
 ## AST Explained
 
 The parser emits an Abstract Syntax Tree (AST). It's not really a tree, but a Directed Acyclic Graph.
@@ -121,6 +127,10 @@ prettyPrintAST(p.parse('-3'))
 | $1 |  numerical | value: 3 |
 | $2 |     uminus | value: 1 |
 ```
+
+# Extension Patterns
+
+TODO
 
 # Implementation Design
 

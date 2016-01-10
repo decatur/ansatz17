@@ -1,14 +1,14 @@
-classdef Evaluator
+classdef ExprEvaluator
 %Evaluates an AST against a variable scope.
 %
 % Usage:
 %   p = ExprParser();
 %   [ast, parseError] = p.parse('x+2*3');
-%   etor = Evaluator(ast);
+%   etor = ExprEvaluator(ast);
 %   scope = struct('x', 1);
-%   etor.exec(scope);
+%   etor.exec(scope);       % 
 %
-% COPYRIGHT Wolfgang Kuehn 2016 under the MIT License (MIT).
+% COPYRIGHT Wolfgang Kuehn 2015-2016 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
 
 properties (SetAccess = public)
@@ -18,7 +18,7 @@ end
 
 methods (Access = public)
 
-    function this = Evaluator(ast)
+    function this = ExprEvaluator(ast)
         this.ast = ast;
     end
 
@@ -44,11 +44,11 @@ methods (Access = public)
     end
 
     function value = uminus(this, node)
-        value = -ast{node.value}.value;
+        value = -this.ast{node.value}.value;
     end
 
     function value = uplus(this, node)
-        value = ast{node.value}.value;
+        value = this.ast{node.value}.value;
     end
 
     function value = times(this, node)

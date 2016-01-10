@@ -1,7 +1,7 @@
 function testExpr()
 %test Execute all tests.
 %
-% COPYRIGHT Wolfgang Kühn 2015 under the MIT License (MIT).
+% COPYRIGHT Wolfgang Kühn 2015-2016 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
 
 
@@ -11,7 +11,7 @@ function assertTest(s, expected)
         fprintf(1, '%s %s\n', parseError, s);
         return
     end
-    observed = evalExpr(ast, struct());
+    observed = ExprEvaluator(ast).exec();
     if isempty(observed) && isempty(expected)    
         fprintf(1, 'OK empty\n');
     elseif isequaln(observed, expected)    

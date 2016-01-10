@@ -4,7 +4,7 @@ classdef ExprParser < Parser
 %   p = ExprParser();
 %   [ast, parseError] = p.parse('1+2*3')
 %
-% COPYRIGHT Wolfgang Kuehn 2016 under the MIT License (MIT).
+% COPYRIGHT Wolfgang Kuehn 2015-2016 under the MIT License (MIT).
 % Origin is https://github.com/decatur/ansatz17.
 
     properties (SetAccess = public)
