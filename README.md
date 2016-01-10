@@ -31,9 +31,7 @@ and the prefix `-` and `+` operations.
 ```
 p = ExprParser();
 [ast, parseError] = p.parse('x+2*3');
-scope = struct('x', 1);
-QtyEvaluator(ast).exec(scope)
-ans = 7
+y = ExprEvaluator(ast).exec(scope)  % y = 7
 ```
 
 ## FuncExprParser
@@ -44,7 +42,7 @@ The class 'FuncExprParser' extends `ExprParser` to also support function calls.
 p = FuncExprParser();
 [ast, parseError] = p.parse('power(sin(x),2) + power(cos(x),2)');
 scope = struct('x', 1.2345);
-y = QtyEvaluator(ast).exec(scope)   % y = 1
+y = ExprEvaluator(ast).exec(scope)   % y = 1
 ```
 ## QtyExprParser
 
