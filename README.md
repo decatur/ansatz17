@@ -1,3 +1,5 @@
+⚠️ Deprecated. 
+
 This is a fast, extensible, yet simple parser for GNU Octave and MATLAB®.
 It is a single file solution with about 200 lines of code.
 
